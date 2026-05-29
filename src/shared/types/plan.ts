@@ -8,12 +8,8 @@ export interface Plan {
     popular?: boolean
     features: string[]
     limits: {
+        channels: number | "unlimited"
+        aiAgents: number | "unlimited"
         messages: number | "unlimited"
-        voiceMinutes: number | "unlimited"
-        users: number | "unlimited"
-        aiCredits: number | "unlimited"
-        automations: number | "unlimited"
-        storageGB: number | "unlimited"
-        connectedChannels: number | "unlimited"
     }
 }

@@ -15,13 +15,9 @@ export const mockPlans: Plan[] = [
             "Email support",
         ],
         limits: {
+            channels: 1,
+            aiAgents: 1,
             messages: 500,
-            voiceMinutes: 0,
-            users: 1,
-            aiCredits: 1000,
-            automations: 3,
-            storageGB: 1,
-            connectedChannels: 1,
         },
     },
     {
@@ -41,13 +37,9 @@ export const mockPlans: Plan[] = [
             "Priority support",
         ],
         limits: {
+            channels: 3,
+            aiAgents: 3,
             messages: 5000,
-            voiceMinutes: 500,
-            users: 5,
-            aiCredits: 10000,
-            automations: 50,
-            storageGB: 5,
-            connectedChannels: 3,
         },
     },
     {
@@ -66,13 +58,9 @@ export const mockPlans: Plan[] = [
             "API access",
         ],
         limits: {
-            messages: "unlimited",
-            voiceMinutes: "unlimited",
-            users: "unlimited",
-            aiCredits: "unlimited",
-            automations: "unlimited",
-            storageGB: 25,
-            connectedChannels: 10,
+            channels: 10,
+            aiAgents: 10,
+            messages: 20000,
         },
     },
 ]
