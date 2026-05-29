@@ -1,9 +1,9 @@
 import { createBrowserRouter } from "react-router";
 import { MainLayout } from "@/principal/layouts/MainLayout";
 import { FormLayout } from "@/principal/layouts/FormLayout";
-import { DashLayout } from "@/admin/layouts/DashLayout";
+import { DashLayout } from "@/dashboard/layouts/DashLayout";
 import { HomePage } from "@/principal/pages/home/HomePage";
-import { MainPage } from "@/admin/pages/main-pages/main/MainPage";
+import { MainPage } from "@/dashboard/pages/main-pages/main/MainPage";
 
 import {
     AcceptInvitePage,

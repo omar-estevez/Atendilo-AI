@@ -1,6 +1,6 @@
 import { X, Brain, Clock, User, Radio } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { AIActivity } from "@/admin/types/activity"
+import type { AIActivity } from "@/dashboard/types/activity"
 
 interface ViewActivityModalProps {
     open: boolean
@@ -96,10 +96,10 @@ export const ViewActivityModal = ({
                         <div className="h-2 overflow-hidden rounded-full bg-secondary">
                             <div
                                 className={`h-full rounded-full ${activity.confidence >= 90
-                                        ? "bg-emerald-400"
-                                        : activity.confidence >= 75
-                                            ? "bg-amber-400"
-                                            : "bg-red-400"
+                                    ? "bg-emerald-400"
+                                    : activity.confidence >= 75
+                                        ? "bg-amber-400"
+                                        : "bg-red-400"
                                     }`}
                                 style={{ width: `${activity.confidence}%` }}
                             />

@@ -1,4 +1,4 @@
-import type { AiAssistantType } from "@/admin/types";
+import type { AiAssistantType } from "@/dashboard/types";
 import { Card } from "@/components/ui/card";
 import { Brain, MessageSquareText, Sparkles } from "lucide-react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";

@@ -8,7 +8,7 @@ import {
     Plus,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
-import { sidebarSections, type NavItem } from "@/admin/config/sidebarItems";
+import { sidebarSections, type NavItem } from "@/dashboard/config/sidebarItems";
 
 interface SidebarProps {
     sidebarCollapsed: boolean;

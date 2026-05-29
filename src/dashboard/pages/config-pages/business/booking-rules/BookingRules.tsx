@@ -1,4 +1,4 @@
-import type { BusinessBookingTypes } from "@/admin/types";
+import type { BusinessBookingTypes } from "@/dashboard/types";
 import { Card } from "@/components/ui/card";
 import { CalendarClock, Link } from "lucide-react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";

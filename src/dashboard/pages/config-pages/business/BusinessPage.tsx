@@ -22,7 +22,7 @@ import type {
     BusinessService,
     EscalationContactTypes,
     EscalationRuleKey,
-} from "@/admin/types";
+} from "@/dashboard/types";
 
 type BusinessSettings = {
     services?: BusinessService[];

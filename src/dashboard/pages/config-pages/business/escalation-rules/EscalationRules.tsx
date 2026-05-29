@@ -1,4 +1,4 @@
-import type { EscalationContactTypes, EscalationRuleKey } from "@/admin/types";
+import type { EscalationContactTypes, EscalationRuleKey } from "@/dashboard/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Mail, Phone, ShieldAlert, ToggleLeft, ToggleRight } from "lucide-react";
@@ -85,8 +85,8 @@ export const EscalationRules = ({
                                     </p>
                                     <p
                                         className={`mt-2 text-xs ${isEnabled
-                                                ? "text-emerald-400"
-                                                : "text-muted-foreground"
+                                            ? "text-emerald-400"
+                                            : "text-muted-foreground"
                                             }`}
                                     >
                                         {isEnabled ? "Enabled" : "Disabled"}

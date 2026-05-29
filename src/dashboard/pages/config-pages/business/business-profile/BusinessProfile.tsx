@@ -1,4 +1,4 @@
-import type { BusinessProfileType } from "@/admin/types";
+import type { BusinessProfileType } from "@/dashboard/types";
 import { Card } from "@/components/ui/card";
 import { BriefcaseBusiness, Globe, Mail, MapPin, Phone } from "lucide-react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";

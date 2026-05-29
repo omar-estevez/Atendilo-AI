@@ -1,4 +1,4 @@
-import type { BusinessFaq, BusinessNewFaq } from "@/admin/types";
+import type { BusinessFaq, BusinessNewFaq } from "@/dashboard/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CircleQuestionMark, Plus, Trash2 } from "lucide-react";

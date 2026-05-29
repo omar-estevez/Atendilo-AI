@@ -1,4 +1,4 @@
-import type { BusinessDay } from "@/admin/types";
+import type { BusinessDay } from "@/dashboard/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Clock, ToggleLeft, ToggleRight } from "lucide-react";
@@ -43,8 +43,8 @@ export const BusinessHours = ({
                             <p className="font-medium">{item.day}</p>
                             <p
                                 className={`text-xs ${item.enabled
-                                        ? "text-emerald-400"
-                                        : "text-muted-foreground"
+                                    ? "text-emerald-400"
+                                    : "text-muted-foreground"
                                     }`}
                             >
                                 {item.enabled ? "Open" : "Closed"}

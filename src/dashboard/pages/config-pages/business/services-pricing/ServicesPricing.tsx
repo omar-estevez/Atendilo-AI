@@ -1,4 +1,4 @@
-import type { BusinessNewService, BusinessService } from "@/admin/types";
+import type { BusinessNewService, BusinessService } from "@/dashboard/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DollarSign, Plus, Timer, Toolbox, Trash2 } from "lucide-react";
