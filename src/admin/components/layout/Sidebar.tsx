@@ -1,272 +1,90 @@
-import { useState } from "react"
-import { NavLink } from "react-router"
+import { useState } from "react";
+import { NavLink } from "react-router";
 import {
-    Home,
-    MessageSquare,
-    Phone,
-    Calendar,
-    Users,
-    BarChart3,
-    Brain,
-    Workflow,
-    FileText,
-    MessageCircle,
-    Smartphone,
-    Globe,
-    Mail,
-    Webhook,
-    Plug,
-    Key,
-    Building2,
-    UserCog,
-    CreditCard,
-    Shield,
-    BellRing,
     Bot,
     ChevronDown,
-    Plus,
-    Sparkles,
     Crown,
     LogOut,
-} from "lucide-react"
+    Plus,
+} from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
+import { sidebarSections, type NavItem } from "@/admin/config/sidebarItems";
 
 interface SidebarProps {
-    sidebarCollapsed: boolean
-    sidebarOpen: boolean
-    onCloseSidebar?: () => void
+    sidebarCollapsed: boolean;
+    sidebarOpen: boolean;
+    onCloseSidebar?: () => void;
 }
 
-type Workspace = {
-    id: string
-    name: string
-    plan: string
-    logo: string
-}
+type ModuleStatus = "active" | "inactive" | "upgrade";
 
-type NavItem = {
-    id: string
-    label: string
-    path: string
-    icon: React.ElementType
-    badge?: number | string | null
-    status?: "active" | "inactive" | "upgrade"
-}
+const getInitials = (name?: string | null) => {
+    if (!name) return "U";
 
-const workspaces: Workspace[] = [
-    {
-        id: "ws_001",
-        name: "AutoPro Detailing",
-        plan: "Growth",
-        logo: "AP",
-    },
-    {
-        id: "ws_002",
-        name: "QuickTow Services",
-        plan: "Starter",
-        logo: "QT",
-    },
-    {
-        id: "ws_003",
-        name: "Elite Roofing Co",
-        plan: "Scale",
-        logo: "ER",
-    },
-]
+    return name
+        .split(" ")
+        .map((word) => word[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
+};
 
-const mainNavItems: NavItem[] = [
-    {
-        id: "dashboard",
-        label: "Dashboard",
-        path: "/dashboard",
-        icon: Home,
-    },
-    {
-        id: "conversations",
-        label: "Conversations",
-        path: "/dashboard/conversations",
-        icon: MessageSquare,
-        badge: 12,
-    },
-    {
-        id: "voice",
-        label: "Voice AI",
-        path: "/dashboard/voice",
-        icon: Phone,
-    },
-    {
-        id: "bookings",
-        label: "Bookings",
-        path: "/dashboard/bookings",
-        icon: Calendar,
-        badge: 4,
-    },
-    {
-        id: "leads",
-        label: "Leads",
-        path: "/dashboard/leads",
-        icon: Users,
-        badge: 8,
-    },
-    {
-        id: "analytics",
-        label: "Analytics",
-        path: "/dashboard/analytics",
-        icon: BarChart3,
-    },
-]
+const getBusinessLogo = (name?: string | null) => {
+    if (!name) return "LM";
 
-const intelligenceNavItems: NavItem[] = [
-    {
-        id: "ai-activity",
-        label: "AI Activity",
-        path: "/dashboard/ai-activity",
-        icon: Brain,
-        badge: "Live",
-    },
-    {
-        id: "flows",
-        label: "AI Flows",
-        path: "/dashboard/flows",
-        icon: Workflow,
-    },
-    {
-        id: "templates",
-        label: "Templates",
-        path: "/dashboard/templates",
-        icon: FileText,
-    },
-]
+    return name
+        .split(" ")
+        .map((word) => word[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
+};
 
-const channelNavItems: NavItem[] = [
-    {
-        id: "whatsapp",
-        label: "WhatsApp",
-        path: "/dashboard/channels/whatsapp",
-        icon: MessageCircle,
-        status: "active",
-    },
-    {
-        id: "sms",
-        label: "SMS",
-        path: "/dashboard/channels/sms",
-        icon: Smartphone,
-        status: "active",
-    },
-    {
-        id: "webchat",
-        label: "Web Chat",
-        path: "/dashboard/channels/webchat",
-        icon: Globe,
-        status: "active",
-    },
-    {
-        id: "email",
-        label: "Email",
-        path: "/dashboard/channels/email",
-        icon: Mail,
-        status: "inactive",
-    },
-]
-
-const integrationNavItems: NavItem[] = [
-    {
-        id: "webhooks",
-        label: "Webhooks",
-        path: "/dashboard/webhooks",
-        icon: Webhook,
-    },
-    {
-        id: "integrations",
-        label: "Integrations",
-        path: "/dashboard/integrations",
-        icon: Plug,
-    },
-    {
-        id: "api",
-        label: "API Keys",
-        path: "/dashboard/api",
-        icon: Key,
-    },
-]
-
-const configurationNavItems: NavItem[] = [
-    {
-        id: "business",
-        label: "Business",
-        path: "/dashboard/business",
-        icon: Building2,
-    },
-    {
-        id: "team",
-        label: "Team",
-        path: "/dashboard/team",
-        icon: UserCog,
-    },
-    {
-        id: "billing",
-        label: "Billing",
-        path: "/dashboard/billing",
-        icon: CreditCard,
-    },
-    {
-        id: "security",
-        label: "Security",
-        path: "/dashboard/security",
-        icon: Shield,
-    },
-    {
-        id: "notifications",
-        label: "Notifications",
-        path: "/dashboard/notifications",
-        icon: BellRing,
-    },
-]
-
-const sections = [
-    {
-        title: "Main",
-        items: mainNavItems,
-    },
-    {
-        title: "Intelligence",
-        icon: Sparkles,
-        items: intelligenceNavItems,
-    },
-    {
-        title: "Channels",
-        items: channelNavItems,
-    },
-    {
-        title: "Integrations",
-        items: integrationNavItems,
-    },
-    {
-        title: "Configuration",
-        items: configurationNavItems,
-    },
-]
-
-const getStatusDotClass = (status?: NavItem["status"]) => {
-    if (status === "active") return "bg-emerald-400"
-    if (status === "upgrade") return "bg-amber-400"
-    if (status === "inactive") return "bg-muted-foreground"
-    return ""
-}
+const getStatusDotClass = (status?: ModuleStatus) => {
+    if (status === "active") return "bg-emerald-400";
+    if (status === "upgrade") return "bg-amber-400";
+    if (status === "inactive") return "bg-muted-foreground";
+    return "";
+};
 
 export const Sidebar = ({
     sidebarCollapsed,
     sidebarOpen,
     onCloseSidebar,
 }: SidebarProps) => {
-    const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false)
-    const [currentWorkspace, setCurrentWorkspace] = useState<Workspace>(
-        workspaces[0]
-    )
+    const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
 
-    const sidebarWidth = sidebarCollapsed ? "lg:w-20" : "lg:w-72"
+    const { business, profile, subscription, modules, hasModule, logout } = useAuthStore();
+
+    const sidebarWidth = sidebarCollapsed ? "lg:w-20" : "lg:w-72";
+
+    const currentPlanName = subscription?.plans?.name?.toLowerCase();
+
+    const isHighestPlan =
+        currentPlanName === "scale" ||
+        currentPlanName === "business" ||
+        currentPlanName === "enterprise";
+
+    const activeModuleKeys = modules
+        .filter((businessModule) => businessModule.enabled)
+        .map((businessModule) => businessModule.modules.key);
+
+    const getItemStatus = (item: NavItem): ModuleStatus => {
+        if (activeModuleKeys.includes(item.moduleKey)) return "active";
+
+        return "upgrade";
+    };
+
+    const visibleSections = sidebarSections
+        .map((section) => ({
+            ...section,
+            items: section.items.filter((item) => hasModule(item.moduleKey)),
+        }))
+        .filter((section) => section.items.length > 0);
 
     const renderNavItem = (item: NavItem) => {
-        const Icon = item.icon
+        const Icon = item.icon;
+        const status = getItemStatus(item);
 
         return (
             <NavLink
@@ -306,18 +124,18 @@ export const Sidebar = ({
                             </span>
                         )}
 
-                        {item.status && (
-                            <span
-                                className={`h-2 w-2 rounded-full ${getStatusDotClass(
-                                    item.status
-                                )}`}
-                            />
-                        )}
+                        <span
+                            className={`h-2 w-2 rounded-full ${getStatusDotClass(status)}`}
+                        />
                     </div>
                 )}
             </NavLink>
-        )
-    }
+        );
+    };
+
+    const handleLogout = async () => {
+        await logout();
+    };
 
     return (
         <>
@@ -337,7 +155,6 @@ export const Sidebar = ({
                 ].join(" ")}
             >
                 <div className="flex h-full flex-col">
-                    {/* Logo + Workspace */}
                     <div className="border-b border-border/50 p-3">
                         <div
                             className={`mb-3 flex items-center ${sidebarCollapsed ? "justify-center" : "gap-2"
@@ -363,15 +180,15 @@ export const Sidebar = ({
                                 >
                                     <div className="flex min-w-0 items-center gap-2">
                                         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-xs font-semibold text-primary">
-                                            {currentWorkspace.logo}
+                                            {getBusinessLogo(business?.name)}
                                         </div>
 
                                         <div className="min-w-0 text-left">
                                             <p className="truncate text-sm font-semibold">
-                                                {currentWorkspace.name}
+                                                {business?.name || "Lumora Business"}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
-                                                {currentWorkspace.plan}
+                                                {subscription?.plans?.name || "No Plan"}
                                             </p>
                                         </div>
                                     </div>
@@ -384,32 +201,20 @@ export const Sidebar = ({
 
                                 {workspaceMenuOpen && (
                                     <div className="absolute left-0 right-0 top-full z-50 mt-2 rounded-xl border border-border/50 bg-background p-1 shadow-xl">
-                                        {workspaces.map((workspace) => (
-                                            <button
-                                                key={workspace.id}
-                                                onClick={() => {
-                                                    setCurrentWorkspace(workspace)
-                                                    setWorkspaceMenuOpen(false)
-                                                }}
-                                                className={`flex w-full items-center gap-2 rounded-lg p-2 text-left transition-colors hover:bg-secondary ${workspace.id === currentWorkspace.id
-                                                    ? "bg-primary/10"
-                                                    : ""
-                                                    }`}
-                                            >
-                                                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/20 text-xs font-semibold text-primary">
-                                                    {workspace.logo}
-                                                </div>
+                                        <button className="flex w-full items-center gap-2 rounded-lg p-2 text-left transition-colors hover:bg-secondary">
+                                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/20 text-xs font-semibold text-primary">
+                                                {getBusinessLogo(business?.name)}
+                                            </div>
 
-                                                <div>
-                                                    <p className="text-sm font-medium">
-                                                        {workspace.name}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {workspace.plan}
-                                                    </p>
-                                                </div>
-                                            </button>
-                                        ))}
+                                            <div>
+                                                <p className="text-sm font-medium">
+                                                    {business?.name || "Lumora Business"}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {subscription?.plans?.name || "No Plan"}
+                                                </p>
+                                            </div>
+                                        </button>
 
                                         <div className="mt-1 border-t border-border/50 pt-1">
                                             <button className="flex w-full items-center gap-2 rounded-lg p-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
@@ -423,11 +228,10 @@ export const Sidebar = ({
                         )}
                     </div>
 
-                    {/* Navigation */}
                     <nav className="sidebar-scroll flex-1 overflow-y-auto px-2 py-4">
                         <div className="space-y-5">
-                            {sections.map((section) => {
-                                const SectionIcon = section.icon
+                            {visibleSections.map((section) => {
+                                const SectionIcon = section.icon;
 
                                 return (
                                     <div key={section.title}>
@@ -446,32 +250,47 @@ export const Sidebar = ({
                                             {section.items.map(renderNavItem)}
                                         </div>
                                     </div>
-                                )
+                                );
                             })}
                         </div>
                     </nav>
 
-                    {/* Plan Card */}
                     {!sidebarCollapsed && (
                         <div className="border-t border-border/50 p-3">
-                            <div className="rounded-2xl border border-primary/20 bg-primary/10 p-3">
-                                <div className="mb-2 flex items-center gap-2">
-                                    <Crown className="h-4 w-4 text-amber-400" />
-                                    <p className="font-semibold">Growth Plan</p>
+                            {isHighestPlan ? (
+                                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-3">
+                                    <div className="mb-2 flex items-center gap-2">
+                                        <Crown className="h-4 w-4 text-amber-400" />
+                                        <p className="font-semibold">
+                                            {subscription?.plans?.name || "Scale"} Plan
+                                        </p>
+                                    </div>
+
+                                    <p className="text-xs leading-relaxed text-muted-foreground">
+                                        All Lumora modules are unlocked.
+                                    </p>
                                 </div>
+                            ) : (
+                                <div className="rounded-2xl border border-primary/20 bg-primary/10 p-3">
+                                    <div className="mb-2 flex items-center gap-2">
+                                        <Crown className="h-4 w-4 text-amber-400" />
+                                        <p className="font-semibold">
+                                            {subscription?.plans?.name || "Starter"} Plan
+                                        </p>
+                                    </div>
 
-                                <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-                                    Unlock AI voice and more premium functions.
-                                </p>
+                                    <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+                                        Unlock AI voice, advanced automations, and premium channels.
+                                    </p>
 
-                                <button className="cursor-pointer w-full rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
-                                    Upgrade Plan
-                                </button>
-                            </div>
+                                    <button className="cursor-pointer w-full rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+                                        Upgrade Plan
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 
-                    {/* User */}
                     <div className="border-t border-border/50 p-3">
                         <div
                             className={`flex items-center ${sidebarCollapsed ? "justify-center" : "justify-between"
@@ -479,22 +298,29 @@ export const Sidebar = ({
                         >
                             <div className="flex min-w-0 items-center gap-3">
                                 <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20">
-                                    <span className="text-sm font-semibold">JD</span>
+                                    <span className="text-sm font-semibold">
+                                        {getInitials(profile?.full_name || profile?.email)}
+                                    </span>
                                     <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-emerald-400" />
                                 </div>
 
                                 {!sidebarCollapsed && (
                                     <div className="min-w-0">
                                         <p className="truncate text-sm font-semibold">
-                                            Juan Delgado
+                                            {profile?.full_name || profile?.email || "User"}
                                         </p>
-                                        <p className="text-xs text-muted-foreground">Owner</p>
+                                        <p className="text-xs capitalize text-muted-foreground">
+                                            {profile?.role || "viewer"}
+                                        </p>
                                     </div>
                                 )}
                             </div>
 
                             {!sidebarCollapsed && (
-                                <button className="cursor-pointer rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+                                <button
+                                    onClick={handleLogout}
+                                    className="cursor-pointer rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                                >
                                     <LogOut className="h-4 w-4" />
                                 </button>
                             )}
@@ -503,7 +329,7 @@ export const Sidebar = ({
                 </div>
             </aside>
         </>
-    )
-}
+    );
+};
 
-export default Sidebar
+export default Sidebar;

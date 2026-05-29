@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button"
+import { useAuthStore } from "@/store/authStore"
 import { motion } from "framer-motion"
 import { Bot } from "lucide-react"
 import { Link, useNavigate } from "react-router"
@@ -6,6 +7,8 @@ import { Link, useNavigate } from "react-router"
 export const Navigation = () => {
 
     const navigate = useNavigate();
+
+    const { isInitialized, isAuthenticated } = useAuthStore();
 
     return (
         <motion.nav
@@ -30,12 +33,34 @@ export const Navigation = () => {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <Button variant="ghost" size="sm" className="hidden sm:inline-flex" onClick={() => navigate('/login')}>
-                            Log in
-                        </Button>
-                        <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground glow" onClick={() => navigate('/register')}>
-                            Start Free Trial
-                        </Button>
+                        {isInitialized && isAuthenticated ? (
+                            <Button
+                                size="sm"
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground glow"
+                                onClick={() => navigate("/dashboard")}
+                            >
+                                Dashboard
+                            </Button>
+                        ) : (
+                            <>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="hidden sm:inline-flex"
+                                    onClick={() => navigate("/login")}
+                                >
+                                    Log in
+                                </Button>
+
+                                <Button
+                                    size="sm"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground glow"
+                                    onClick={() => navigate("/register")}
+                                >
+                                    Start Free Trial
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

@@ -6,10 +6,10 @@ import { Header } from "../components/layout/Header"
 import { ScrollManager } from "@/utils/ScrollManager"
 
 export const DashLayout = () => {
+    const location = useLocation()
+
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-
-    const location = useLocation()
 
     return (
         <div className="min-h-screen bg-background">

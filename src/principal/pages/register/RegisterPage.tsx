@@ -1,10 +1,14 @@
 import { Button } from '@/components/ui/button';
+import { useAuthStore } from '@/store/authStore';
 import { motion } from 'framer-motion';
 import { Sparkles, Check, User, Building2, Mail, EyeOff, Eye, ArrowRight, Lock } from 'lucide-react';
-import { useState } from 'react';
-import { Link } from 'react-router';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router';
 
 export const RegisterPage = () => {
+
+    const navigate = useNavigate();
+
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -16,7 +20,20 @@ export const RegisterPage = () => {
         confirmPassword: "",
     });
 
-    const [isLoading, setIsLoading] = useState(false);
+    const {
+        register,
+        isAuthenticated,
+        isInitialized,
+        isLoading,
+        // error,
+        clearError,
+    } = useAuthStore();
+
+    useEffect(() => {
+        if (isInitialized && isAuthenticated) {
+            navigate("/dashboard", { replace: true });
+        }
+    }, [isInitialized, isAuthenticated, navigate]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -24,12 +41,19 @@ export const RegisterPage = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
 
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        clearError();
 
-        setIsLoading(false);
+        if (formData.password !== formData.confirmPassword) {
+            return;
+        }
+
+        try {
+            await register(formData.email, formData.password);
+            navigate("/dashboard", { replace: true });
+        } catch {
+            // Error already handled by Zustand
+        }
     };
 
     const passwordRequirements = [
@@ -366,15 +390,15 @@ export const RegisterPage = () => {
                                     >
                                         <Check
                                             className={`w-2.5 h-2.5 transition-colors ${req.met
-                                                    ? "text-green-500"
-                                                    : "text-muted-foreground"
+                                                ? "text-green-500"
+                                                : "text-muted-foreground"
                                                 }`}
                                         />
                                     </div>
                                     <span
                                         className={`text-xs transition-colors ${req.met
-                                                ? "text-green-500"
-                                                : "text-muted-foreground"
+                                            ? "text-green-500"
+                                            : "text-muted-foreground"
                                             }`}
                                     >
                                         {req.label}

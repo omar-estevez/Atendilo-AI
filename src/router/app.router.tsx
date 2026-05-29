@@ -4,6 +4,7 @@ import { FormLayout } from "@/principal/layouts/FormLayout";
 import { DashLayout } from "@/admin/layouts/DashLayout";
 import { HomePage } from "@/principal/pages/home/HomePage";
 import { MainPage } from "@/admin/pages/main-pages/main/MainPage";
+
 import {
     ActivityPage,
     AnalyticsPage,
@@ -30,139 +31,255 @@ import {
     TemplatesPage,
     TermsPage,
     VoiceAiPage,
-    WebhooksPage
+    WebhooksPage,
 } from "./routes/lazy-pages";
 
+import { ProtectedRoute } from "./routes/ProtectedRoute";
+import { ModuleRoute } from "./routes/ModuleRoute";
+import { ChannelModuleRoute } from "./routes/ChannelModuleRoute";
 
 export const appRouter = createBrowserRouter([
     {
-        path: '/',
+        path: "/",
         element: <MainLayout />,
         children: [
             {
                 index: true,
-                element: <HomePage />
+                element: <HomePage />,
             },
             {
-                path: '/contact',
-                element: <ContactPage />
-            }
-        ]
+                path: "contact",
+                element: <ContactPage />,
+            },
+        ],
     },
     {
-        path: '/',
+        path: "/",
         element: <FormLayout />,
         children: [
             {
-                path: '/login',
-                element: <LoginPage />
+                path: "login",
+                element: <LoginPage />,
             },
             {
-                path: '/register',
-                element: <RegisterPage />
+                path: "register",
+                element: <RegisterPage />,
             },
             {
-                path: '/forgot-password',
-                element: <ForgotPasswordPage />
+                path: "forgot-password",
+                element: <ForgotPasswordPage />,
             },
             {
-                path: '/privacy',
-                element: <PrivacyPage />
+                path: "privacy",
+                element: <PrivacyPage />,
             },
             {
-                path: '/terms',
-                element: <TermsPage />
+                path: "terms",
+                element: <TermsPage />,
             },
             {
-                path: '/security',
-                element: <SecurityPage />
-            }
-        ]
+                path: "security",
+                element: <SecurityPage />,
+            },
+        ],
     },
     {
-        path: '/dashboard',
-        element: <DashLayout />,
+        element: <ProtectedRoute />,
         children: [
             {
-                index: true,
-                element: <MainPage />
+                path: "/dashboard",
+                element: <DashLayout />,
+                children: [
+                    {
+                        index: true,
+                        element: <MainPage />,
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="conversations" />,
+                        children: [
+                            {
+                                path: "conversations",
+                                element: <ConversationPage />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="voice_ai" />,
+                        children: [
+                            {
+                                path: "voice",
+                                element: <VoiceAiPage />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="bookings" />,
+                        children: [
+                            {
+                                path: "bookings",
+                                element: <BookingsPage />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="leads" />,
+                        children: [
+                            {
+                                path: "leads",
+                                element: <LeadsPage />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="analytics" />,
+                        children: [
+                            {
+                                path: "analytics",
+                                element: <AnalyticsPage />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="ai_activity" />,
+                        children: [
+                            {
+                                path: "ai-activity",
+                                element: <ActivityPage />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="ai_flows" />,
+                        children: [
+                            {
+                                path: "flows",
+                                element: <FlowsPage />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="templates" />,
+                        children: [
+                            {
+                                path: "templates",
+                                element: <TemplatesPage />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ChannelModuleRoute />,
+                        children: [
+                            {
+                                path: "channels/:channel",
+                                element: <ChannelPage />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="webhooks" />,
+                        children: [
+                            {
+                                path: "webhooks",
+                                element: <WebhooksPage />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="integrations" />,
+                        children: [
+                            {
+                                path: "integrations",
+                                element: <IntegrationsPage />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="api_keys" />,
+                        children: [
+                            {
+                                path: "api",
+                                element: <ApiKeysPage />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="business" />,
+                        children: [
+                            {
+                                path: "business",
+                                element: <BusinessPage />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="team" />,
+                        children: [
+                            {
+                                path: "team",
+                                element: <TeamPage />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="billing" />,
+                        children: [
+                            {
+                                path: "billing",
+                                element: <BillingPage />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="security" />,
+                        children: [
+                            {
+                                path: "security",
+                                element: <SecurityPageDash />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="notifications" />,
+                        children: [
+                            {
+                                path: "notifications",
+                                element: <NotificationPage />,
+                            },
+                        ],
+                    },
+
+                    {
+                        element: <ModuleRoute moduleKey="business" />,
+                        children: [
+                            {
+                                path: "appearance",
+                                element: <AppearancePage />,
+                            },
+                            {
+                                path: "language",
+                                element: <LanguagePage />,
+                            },
+                        ],
+                    },
+                ],
             },
-            {
-                path: 'conversations',
-                element: <ConversationPage />
-            },
-            {
-                path: 'voice',
-                element: <VoiceAiPage />
-            },
-            {
-                path: 'bookings',
-                element: <BookingsPage />
-            },
-            {
-                path: 'leads',
-                element: <LeadsPage />
-            },
-            {
-                path: 'analytics',
-                element: <AnalyticsPage />
-            },
-            {
-                path: 'ai-activity',
-                element: <ActivityPage />
-            },
-            {
-                path: 'flows',
-                element: <FlowsPage />
-            },
-            {
-                path: 'templates',
-                element: <TemplatesPage />
-            },
-            {
-                path: 'channels/:channel',
-                element: <ChannelPage />
-            },
-            {
-                path: 'webhooks',
-                element: <WebhooksPage />
-            },
-            {
-                path: 'integrations',
-                element: <IntegrationsPage />
-            },
-            {
-                path: 'api',
-                element: <ApiKeysPage />
-            },
-            {
-                path: 'business',
-                element: <BusinessPage />
-            },
-            {
-                path: 'team',
-                element: <TeamPage />
-            },
-            {
-                path: 'billing',
-                element: <BillingPage />
-            },
-            {
-                path: 'security',
-                element: <SecurityPageDash />
-            },
-            {
-                path: 'notifications',
-                element: <NotificationPage />
-            },
-            {
-                path: 'appearance',
-                element: <AppearancePage />
-            },
-            {
-                path: 'language',
-                element: <LanguagePage />
-            }
-        ]
-    }
-])
+        ],
+    },
+]);

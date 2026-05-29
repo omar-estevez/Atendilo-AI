@@ -1,22 +1,46 @@
 import { Button } from '@/components/ui/button';
+import { LumoraLoader } from '@/shared/components/LumoraLoader';
+import { useAuthStore } from '@/store/authStore';
 import { motion } from 'framer-motion';
 import { Sparkles, Check, Mail, EyeOff, Eye, ArrowRight, Lock } from 'lucide-react';
-import React, { useState } from 'react'
-import { Link } from 'react-router';
+import React, { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router';
 
 export const LoginPage = () => {
+    const navigate = useNavigate();
+
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
+
+    const { login, isLoading, error, clearError, isInitialized, isAuthenticated, loadingStep } = useAuthStore();
+
+    useEffect(() => {
+        if (isInitialized && isAuthenticated) {
+            navigate("/dashboard", { replace: true });
+        }
+    }, [isInitialized, isAuthenticated, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        setIsLoading(false);
+
+        clearError();
+        try {
+            await login(email, password);
+            navigate("/dashboard", { replace: true });
+        } catch {
+            // Error already handled by Zustand
+        }
     };
+
+    if (isLoading) {
+        return (
+            <LumoraLoader
+                message="Signing in"
+                subMessage={loadingStep || "Preparing your AI workspace..."}
+            />
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background flex">
@@ -224,7 +248,7 @@ export const LoginPage = () => {
                         </div>
 
                         {/* Remember Me */}
-                        <div className="flex items-center gap-3">
+                        {/* <div className="flex items-center gap-3">
                             <input
                                 id="remember"
                                 type="checkbox"
@@ -236,7 +260,13 @@ export const LoginPage = () => {
                             >
                                 Keep me signed in
                             </label>
-                        </div>
+                        </div> */}
+
+                        {error && (
+                            <p className="text-sm text-red-500">
+                                {error}
+                            </p>
+                        )}
 
                         {/* Submit Button */}
                         <Button
