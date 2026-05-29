@@ -1,13 +1,15 @@
 import { Button } from '@/components/ui/button';
+import { acceptInviteService, type PublicTeamInvitation } from '@/services/acceptInviteService';
 import { useAuthStore } from '@/store/authStore';
 import { motion } from 'framer-motion';
 import { Sparkles, Check, User, Building2, Mail, EyeOff, Eye, ArrowRight, Lock } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 export const RegisterPage = () => {
 
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
 
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -20,6 +22,11 @@ export const RegisterPage = () => {
         confirmPassword: "",
     });
 
+    const [invitation, setInvitation] =
+        useState<PublicTeamInvitation | null>(null);
+
+    const [formError, setFormError] = useState<string | null>(null);
+
     const {
         register,
         isAuthenticated,
@@ -29,11 +36,55 @@ export const RegisterPage = () => {
         clearError,
     } = useAuthStore();
 
+    const redirect = searchParams.get("redirect");
+    const inviteToken = redirect?.includes("accept-invite")
+        ? new URLSearchParams(redirect.split("?")[1]).get("token")
+        : null;
+
+    const isInviteSignup = Boolean(inviteToken);
+
     useEffect(() => {
         if (isInitialized && isAuthenticated) {
-            navigate("/dashboard", { replace: true });
+            navigate(redirect || "/dashboard", { replace: true });
         }
-    }, [isInitialized, isAuthenticated, navigate]);
+    }, [isInitialized, isAuthenticated, navigate, redirect]);
+
+    useEffect(() => {
+        const loadInvitation = async () => {
+            if (!inviteToken) return;
+
+            try {
+                const invitationData =
+                    await acceptInviteService.getInvitationByToken(inviteToken);
+
+                if (!invitationData) {
+                    setFormError("Invitation not found.");
+                    return;
+                }
+
+                if (invitationData.status !== "pending") {
+                    setFormError(`This invitation is ${invitationData.status}.`);
+                    return;
+                }
+
+                setInvitation(invitationData);
+
+                setFormData((current) => ({
+                    ...current,
+                    email: invitationData.email,
+                    businessName: invitationData.business_name,
+                }));
+            } catch (error) {
+                setFormError(
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to load invitation"
+                );
+            }
+        };
+
+        loadInvitation();
+    }, [inviteToken]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -43,16 +94,34 @@ export const RegisterPage = () => {
         e.preventDefault();
 
         clearError();
+        setFormError(null);
 
         if (formData.password !== formData.confirmPassword) {
+            setFormError("Passwords do not match.");
+            return;
+        }
+
+        if (!formData.name.trim()) {
+            setFormError("Full name is required.");
+            return;
+        }
+
+        if (!isInviteSignup && !formData.businessName.trim()) {
+            setFormError("Business name is required.");
             return;
         }
 
         try {
-            await register(formData.email, formData.password);
-            navigate("/dashboard", { replace: true });
+            await register(
+                formData.email,
+                formData.password,
+                formData.name.trim(),
+                isInviteSignup ? undefined : formData.businessName.trim()
+            );
+
+            navigate(redirect || "/dashboard", { replace: true });
         } catch {
-            // Error already handled by Zustand
+            // Error handled by Zustand
         }
     };
 
@@ -182,10 +251,12 @@ export const RegisterPage = () => {
                     {/* Form Header */}
                     <div className="mb-8">
                         <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-                            Create Account
+                            {isInviteSignup ? "Join Workspace" : "Create Account"}
                         </h2>
                         <p className="text-muted-foreground">
-                            Complete your details to start your free trial
+                            {isInviteSignup
+                                ? "Create your account to accept the team invitation"
+                                : "Complete your details to start your free trial"}
                         </p>
                     </div>
 
@@ -241,6 +312,31 @@ export const RegisterPage = () => {
                         <div className="flex-1 h-px bg-border" />
                     </div>
 
+                    {isInviteSignup && invitation && (
+                        <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/10 p-4">
+                            <p className="text-sm font-semibold text-primary">
+                                You are joining {invitation.business_name}
+                            </p>
+
+                            <p className="mt-2 text-sm text-muted-foreground">
+                                Invited as{" "}
+                                <span className="font-medium capitalize text-foreground">
+                                    {invitation.role}
+                                </span>{" "}
+                                using{" "}
+                                <span className="font-medium text-foreground">
+                                    {invitation.email}
+                                </span>
+                            </p>
+                        </div>
+                    )}
+
+                    {formError && (
+                        <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+                            <p className="text-sm text-red-400">{formError}</p>
+                        </div>
+                    )}
+
                     {/* Register Form */}
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {/* Name Field */}
@@ -267,27 +363,31 @@ export const RegisterPage = () => {
                         </div>
 
                         {/* Business Name Field */}
-                        <div className="space-y-2">
-                            <label
-                                htmlFor="businessName"
-                                className="text-sm font-medium text-foreground"
-                            >
-                                Business name
-                            </label>
-                            <div className="relative">
-                                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                                <input
-                                    id="businessName"
-                                    name="businessName"
-                                    type="text"
-                                    value={formData.businessName}
-                                    onChange={handleChange}
-                                    placeholder="My Business LLC"
-                                    className="w-full pl-12 pr-4 py-3.5 bg-input border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                                    required
-                                />
+                        {!isInviteSignup && (
+                            <div className="space-y-2">
+                                <label
+                                    htmlFor="businessName"
+                                    className="text-sm font-medium text-foreground"
+                                >
+                                    Business name
+                                </label>
+
+                                <div className="relative">
+                                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+
+                                    <input
+                                        id="businessName"
+                                        name="businessName"
+                                        type="text"
+                                        value={formData.businessName}
+                                        onChange={handleChange}
+                                        placeholder="My Business LLC"
+                                        className="w-full pl-12 pr-4 py-3.5 bg-input border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                                        required={!isInviteSignup}
+                                    />
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Email Field */}
                         <div className="space-y-2">
@@ -306,6 +406,7 @@ export const RegisterPage = () => {
                                     value={formData.email}
                                     onChange={handleChange}
                                     placeholder="you@company.com"
+                                    disabled={isInviteSignup}
                                     className="w-full pl-12 pr-4 py-3.5 bg-input border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                                     required
                                 />
@@ -444,7 +545,7 @@ export const RegisterPage = () => {
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             ) : (
                                 <>
-                                    Create Free Account
+                                    {isInviteSignup ? "Create Account & Continue" : "Create Free Account"}
                                     <ArrowRight className="w-5 h-5" />
                                 </>
                             )}
@@ -455,7 +556,7 @@ export const RegisterPage = () => {
                     <p className="mt-8 text-center text-muted-foreground">
                         Already have an account?{" "}
                         <Link
-                            to="/login"
+                            to={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : "/login"}
                             className="text-primary font-medium hover:text-primary/80 transition-colors"
                         >
                             Sign in

@@ -36,72 +36,131 @@ type SearchItem = {
 
 const searchItems: SearchItem[] = [
     {
-        id: "search_001",
-        title: "Maria Garcia",
-        description: "Conversation · Schedule appointment",
+        id: "dashboard",
+        title: "Dashboard",
+        description: "Workspace overview and AI performance",
+        type: "page",
+        path: "/dashboard",
+    },
+    {
+        id: "conversations",
+        title: "Conversations",
+        description: "Customer conversations and AI replies",
         type: "conversation",
         path: "/dashboard/conversations",
     },
     {
-        id: "search_002",
-        title: "Carlos Rodriguez",
-        description: "Lead · Price inquiry",
-        type: "lead",
-        path: "/dashboard/leads",
+        id: "voice_ai",
+        title: "Voice AI",
+        description: "AI call logs and voice assistant settings",
+        type: "voice",
+        path: "/dashboard/voice-ai",
     },
     {
-        id: "search_003",
-        title: "Pedro Hernandez",
-        description: "Booking · Today 2:00 PM",
+        id: "bookings",
+        title: "Bookings",
+        description: "Appointments and scheduled services",
         type: "booking",
         path: "/dashboard/bookings",
     },
     {
-        id: "search_004",
-        title: "Gabriel Torres",
-        description: "Voice AI call · Completed",
-        type: "voice",
-        path: "/dashboard/voice",
+        id: "leads",
+        title: "Leads",
+        description: "AI-scored leads and opportunities",
+        type: "lead",
+        path: "/dashboard/leads",
     },
     {
-        id: "search_005",
+        id: "analytics",
+        title: "Analytics",
+        description: "Reports, conversion and channel performance",
+        type: "page",
+        path: "/dashboard/analytics",
+    },
+    {
+        id: "ai_activity",
+        title: "AI Activity",
+        description: "AI actions, replies, escalations and automations",
+        type: "page",
+        path: "/dashboard/ai-activity",
+    },
+    {
+        id: "ai_flows",
+        title: "AI Flows",
+        description: "Manage AI automations and workflows",
+        type: "page",
+        path: "/dashboard/flows",
+    },
+    {
+        id: "templates",
+        title: "Templates",
+        description: "Reusable messages, prompts and follow-ups",
+        type: "page",
+        path: "/dashboard/templates",
+    },
+    {
+        id: "business",
         title: "Business Settings",
-        description: "Configure AI, services, FAQs, and rules",
+        description: "Configure services, FAQs, AI assistant and rules",
         type: "page",
         path: "/dashboard/business",
     },
     {
-        id: "search_006",
-        title: "AI Flows",
-        description: "Manage automations",
+        id: "team",
+        title: "Team Settings",
+        description: "Members, roles and invitations",
         type: "page",
-        path: "/dashboard/flows",
+        path: "/dashboard/team",
     },
-]
+    {
+        id: "billing",
+        title: "Billing",
+        description: "Plan, usage and subscription",
+        type: "page",
+        path: "/dashboard/billing",
+    },
+    {
+        id: "security",
+        title: "Security",
+        description: "Password, sessions and 2FA settings",
+        type: "page",
+        path: "/dashboard/security",
+    },
+    {
+        id: "notifications",
+        title: "Notifications",
+        description: "Email, push and SMS notification preferences",
+        type: "page",
+        path: "/dashboard/notifications",
+    },
+];
 
 const notifications = [
     {
         id: "notif_001",
         title: "New lead captured",
-        description: "Ana Martinez was added from Web Chat.",
+        description: "A new lead was added from Web Chat.",
         time: "2 min ago",
         unread: true,
+        path: "/dashboard/leads",
     },
     {
         id: "notif_002",
         title: "Booking confirmed",
-        description: "Pedro Hernandez confirmed Full Detail.",
+        description: "A customer confirmed a service appointment.",
         time: "12 min ago",
         unread: true,
+        path: "/dashboard/bookings",
     },
     {
         id: "notif_003",
         title: "AI escalation required",
-        description: "Juan Lopez wants to cancel a booking.",
+        description: "A conversation may need human review.",
         time: "1 hour ago",
         unread: false,
+        path: "/dashboard/ai-activity",
     },
-]
+];
 
 const getSearchIcon = (type: SearchItem["type"]) => {
     if (type === "conversation") return MessageSquare
@@ -194,12 +253,14 @@ export const Header = ({
     }, [])
 
     const handleRefresh = () => {
-        setRefreshing(true)
+        setRefreshing(true);
+
+        window.dispatchEvent(new Event("lumora:refresh"));
 
         window.setTimeout(() => {
-            setRefreshing(false)
-        }, 900)
-    }
+            setRefreshing(false);
+        }, 900);
+    };
 
     const openSearchResult = (item: SearchItem) => {
         navigate(item.path)
@@ -312,15 +373,26 @@ export const Header = ({
 
                                     <div className="max-h-80 overflow-y-auto">
                                         {notificationList.map((notification) => (
-                                            <div
+                                            <button
                                                 key={notification.id}
-                                                className="border-b border-border/50 p-3 last:border-b-0 hover:bg-secondary/30"
+                                                onClick={() => {
+                                                    navigate(notification.path);
+                                                    setNotificationsOpen(false);
+                                                    setNotificationList((current) =>
+                                                        current.map((item) =>
+                                                            item.id === notification.id
+                                                                ? { ...item, unread: false }
+                                                                : item
+                                                        )
+                                                    );
+                                                }}
+                                                className="cursor-pointer w-full border-b border-border/50 p-3 text-left last:border-b-0 hover:bg-secondary/30"
                                             >
                                                 <div className="flex items-start gap-3">
                                                     <span
                                                         className={`mt-1 h-2 w-2 rounded-full ${notification.unread
-                                                                ? "bg-primary"
-                                                                : "bg-muted-foreground/40"
+                                                            ? "bg-primary"
+                                                            : "bg-muted-foreground/40"
                                                             }`}
                                                     />
 
@@ -336,7 +408,7 @@ export const Header = ({
                                                         </p>
                                                     </div>
                                                 </div>
-                                            </div>
+                                            </button>
                                         ))}
                                     </div>
 
@@ -381,27 +453,45 @@ export const Header = ({
                                     </div>
 
                                     <div className="p-2">
-                                        <button className="flex w-full items-center gap-3 rounded-lg p-3 text-left hover:bg-secondary/40">
+                                        <button
+                                            onClick={() => {
+                                                navigate("/dashboard/templates");
+                                                setHelpOpen(false);
+                                            }}
+                                            className="cursor-pointer flex w-full items-center gap-3 rounded-lg p-3 text-left hover:bg-secondary/40"
+                                        >
                                             <BookOpen className="h-4 w-4 text-primary" />
                                             <div>
                                                 <p className="text-sm font-medium">Documentation</p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    Learn how Lumora works.
+                                                    Start with templates and AI prompts.
                                                 </p>
                                             </div>
                                         </button>
 
-                                        <button className="flex w-full items-center gap-3 rounded-lg p-3 text-left hover:bg-secondary/40">
+                                        <button
+                                            onClick={() => {
+                                                navigate("/dashboard/team");
+                                                setHelpOpen(false);
+                                            }}
+                                            className="cursor-pointer flex w-full items-center gap-3 rounded-lg p-3 text-left hover:bg-secondary/40"
+                                        >
                                             <LifeBuoy className="h-4 w-4 text-primary" />
                                             <div>
                                                 <p className="text-sm font-medium">Contact Support</p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    Get help from the Lumora team.
+                                                    Manage internal team support access.
                                                 </p>
                                             </div>
                                         </button>
 
-                                        <button className="flex w-full items-center gap-3 rounded-lg p-3 text-left hover:bg-secondary/40">
+                                        <button
+                                            onClick={() => {
+                                                setSearchOpen(true);
+                                                setHelpOpen(false);
+                                            }}
+                                            className="cursor-pointer flex w-full items-center gap-3 rounded-lg p-3 text-left hover:bg-secondary/40"
+                                        >
                                             <Keyboard className="h-4 w-4 text-primary" />
                                             <div>
                                                 <p className="text-sm font-medium">Shortcuts</p>

@@ -1,258 +1,337 @@
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { useEffect, useMemo, useState } from "react";
 import {
-    Plus,
-    Trash2,
+    CheckCircle2,
     Copy,
-    Eye,
-    EyeOff,
-    AlertCircle,
     KeyRound,
-    ShieldCheck,
-    Activity,
-} from "lucide-react"
+    Plus,
+    RefreshCw,
+    Shield,
+    Trash2,
+} from "lucide-react";
 
-import { currentBusinessId, mockApiKeys } from "@/admin/data/mock"
-import type { ApiKey } from "@/admin/types/apiKey"
-import ApiKeyModal from "./api-key-modal/ApiKeyModal"
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { useApiKeysStore } from "@/store/dashboard/apiKeysStore";
+import type { ApiKey } from "@/services/dashboard/apiKeysService";
+import NewApiKeyModal from "./new-api-key/NewApiKeyModal";
+import { formatDate, formatTimeAgo, getStatusClass, getStatusIcon } from "./helpers/ApiKeyHelpers";
 
 export const ApiKeysPage = () => {
-    const [apiKeys, setApiKeys] = useState<ApiKey[]>(
-        mockApiKeys.filter((item) => item.businessId === currentBusinessId)
-    )
+    const {
+        apiKeys,
+        newlyCreatedKey,
+        isLoading,
+        error,
+        loadApiKeys,
+        revokeApiKey,
+        deleteApiKey,
+        clearNewlyCreatedKey,
+    } = useApiKeysStore();
 
-    const [visibleKeyIds, setVisibleKeyIds] = useState<string[]>([])
-    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [isNewApiKeyOpen, setIsNewApiKeyOpen] = useState(false);
+    const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-    const activeKeys = apiKeys.filter((key) => key.status === "active").length
-    const liveKeys = apiKeys.filter((key) => key.environment === "live").length
-    const testKeys = apiKeys.filter((key) => key.environment === "test").length
+    useEffect(() => {
+        loadApiKeys();
+    }, [loadApiKeys]);
 
-    const toggleKeyVisibility = (keyId: string) => {
-        setVisibleKeyIds((current) => {
-            if (current.includes(keyId)) {
-                return current.filter((id) => id !== keyId)
-            }
+    const stats = useMemo(() => {
+        return {
+            total: apiKeys.length,
+            active: apiKeys.filter((key) => key.status === "active").length,
+            revoked: apiKeys.filter((key) => key.status === "revoked").length,
+            used: apiKeys.filter((key) => key.last_used_at).length,
+        };
+    }, [apiKeys]);
 
-            return [...current, keyId]
-        })
-    }
+    const handleCopy = async (value: string) => {
+        await navigator.clipboard.writeText(value);
+        setCopiedKey(value);
 
-    const maskKey = (key: string) => {
-        const [prefix] = key.split("_").slice(0, 2)
-        const visibleStart = key.slice(0, 8)
-        const visibleEnd = key.slice(-6)
+        window.setTimeout(() => {
+            setCopiedKey(null);
+        }, 1500);
+    };
 
-        return `${visibleStart}••••••••••••${visibleEnd}`
-    }
+    const handleRevoke = async (apiKey: ApiKey) => {
+        await revokeApiKey(apiKey);
+    };
 
-    const copyKey = (key: string) => {
-        navigator.clipboard.writeText(key)
-    }
-
-    const revokeKey = (keyId: string) => {
-        setApiKeys((current) =>
-            current.map((key) =>
-                key.id === keyId ? { ...key, status: "revoked" } : key
-            )
-        )
-    }
-
-    const deleteKey = (keyId: string) => {
-        setApiKeys((current) => current.filter((key) => key.id !== keyId))
-    }
-
-    const getEnvironmentClass = (environment: ApiKey["environment"]) => {
-        if (environment === "live") {
-            return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-        }
-
-        return "bg-blue-500/20 text-blue-400 border-blue-500/30"
-    }
-
-    const getStatusClass = (status: ApiKey["status"]) => {
-        if (status === "active") {
-            return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-        }
-
-        return "bg-red-500/20 text-red-400 border-red-500/30"
-    }
+    const handleDelete = async (apiKey: ApiKey) => {
+        await deleteApiKey(apiKey);
+    };
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="h-full px-5 py-6 sm:px-7 lg:px-8">
+            <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold">API Keys</h2>
+                    <h1 className="text-2xl font-bold tracking-tight">
+                        API Keys
+                    </h1>
                     <p className="text-sm text-muted-foreground">
-                        Manage keys used by external systems to access Lumora securely.
+                        Manage API keys for secure external access to Lumora.
                     </p>
                 </div>
 
-                <Button
-                    size="sm"
-                    onClick={() => setIsModalOpen(true)}
-                    className="bg-primary hover:bg-primary/90"
-                >
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Key
-                </Button>
-            </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={loadApiKeys}
+                        disabled={isLoading}
+                    >
+                        <RefreshCw
+                            className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""
+                                }`}
+                        />
+                        Refresh
+                    </Button>
 
-            {/* Stats */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <Card className="border-border/50 p-5">
-                    <div className="mb-1 flex items-center gap-2">
-                        <KeyRound className="h-4 w-4 text-primary" />
-                        <p className="text-sm text-muted-foreground">Active Keys</p>
-                    </div>
-                    <p className="text-3xl font-bold">{activeKeys}</p>
-                </Card>
-
-                <Card className="border-border/50 p-5">
-                    <div className="mb-1 flex items-center gap-2">
-                        <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                        <p className="text-sm text-muted-foreground">Live Keys</p>
-                    </div>
-                    <p className="text-3xl font-bold text-emerald-400">{liveKeys}</p>
-                </Card>
-
-                <Card className="border-border/50 p-5">
-                    <div className="mb-1 flex items-center gap-2">
-                        <Activity className="h-4 w-4 text-blue-400" />
-                        <p className="text-sm text-muted-foreground">Test Keys</p>
-                    </div>
-                    <p className="text-3xl font-bold text-blue-400">{testKeys}</p>
-                </Card>
-            </div>
-
-            {/* API Keys List */}
-            <Card className="border-border/50 overflow-hidden">
-                <div className="divide-y divide-border/50">
-                    {apiKeys.map((apiKey) => {
-                        const isVisible = visibleKeyIds.includes(apiKey.id)
-
-                        return (
-                            <div
-                                key={apiKey.id}
-                                className="p-5 hover:bg-secondary/30 transition-colors"
-                            >
-                                <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                                    <div>
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <p className="font-semibold">{apiKey.name}</p>
-
-                                            <span
-                                                className={`rounded-full border px-2 py-1 text-xs capitalize ${getEnvironmentClass(
-                                                    apiKey.environment
-                                                )}`}
-                                            >
-                                                {apiKey.environment}
-                                            </span>
-
-                                            <span
-                                                className={`rounded-full border px-2 py-1 text-xs capitalize ${getStatusClass(
-                                                    apiKey.status
-                                                )}`}
-                                            >
-                                                {apiKey.status}
-                                            </span>
-                                        </div>
-
-                                        <p className="mt-1 text-xs text-muted-foreground">
-                                            Created: {apiKey.createdAt} | Last used:{" "}
-                                            {apiKey.lastUsed}
-                                        </p>
-                                    </div>
-
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => revokeKey(apiKey.id)}
-                                        disabled={apiKey.status === "revoked"}
-                                        className="text-red-400 hover:text-red-300"
-                                    >
-                                        Revoke
-                                    </Button>
-                                </div>
-
-                                <div className="mb-3 flex items-center gap-2">
-                                    <code className="flex-1 rounded-lg bg-secondary px-3 py-2 font-mono text-sm">
-                                        {isVisible ? apiKey.key : maskKey(apiKey.key)}
-                                    </code>
-
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => copyKey(apiKey.key)}
-                                    >
-                                        <Copy className="h-4 w-4" />
-                                    </Button>
-
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => toggleKeyVisibility(apiKey.id)}
-                                    >
-                                        {isVisible ? (
-                                            <EyeOff className="h-4 w-4" />
-                                        ) : (
-                                            <Eye className="h-4 w-4" />
-                                        )}
-                                    </Button>
-
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => deleteKey(apiKey.id)}
-                                        className="text-red-400 hover:text-red-300"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-
-                                <div className="flex flex-wrap gap-2">
-                                    {apiKey.permissions.map((permission) => (
-                                        <span
-                                            key={permission}
-                                            className="rounded-full bg-primary/10 px-2 py-1 text-xs text-primary"
-                                        >
-                                            {permission}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )
-                    })}
+                    <Button
+                        className="bg-primary hover:bg-primary/90"
+                        onClick={() => setIsNewApiKeyOpen(true)}
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        New API Key
+                    </Button>
                 </div>
-            </Card>
+            </div>
 
-            {/* Security Notice */}
-            <Card className="border-border/50 p-6">
-                <div className="flex items-start gap-4">
-                    <AlertCircle className="h-6 w-6 shrink-0 text-yellow-500" />
+            {error && (
+                <Card className="mb-4 border-red-500/30 bg-red-500/10 p-4">
+                    <p className="text-sm text-red-400">{error}</p>
+                </Card>
+            )}
 
-                    <div>
-                        <p className="mb-1 font-medium">Keep your API keys secure</p>
-                        <p className="text-sm text-muted-foreground">
-                            Never share your API keys publicly. If you believe a key has been
-                            compromised, revoke it immediately and create a new one.
+            {newlyCreatedKey && (
+                <Card className="mb-5 border-emerald-500/30 bg-emerald-500/10 p-5">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                            <p className="flex items-center gap-2 font-semibold text-emerald-400">
+                                <CheckCircle2 className="h-5 w-5" />
+                                API Key created successfully
+                            </p>
+
+                            <p className="mt-2 text-sm text-muted-foreground">
+                                Copy this key now. You will not be able to see it again.
+                            </p>
+
+                            <div className="mt-4 rounded-xl border border-border/60 bg-background/70 p-3 font-mono text-sm">
+                                {newlyCreatedKey}
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => handleCopy(newlyCreatedKey)}
+                            >
+                                <Copy className="mr-2 h-4 w-4" />
+                                {copiedKey === newlyCreatedKey
+                                    ? "Copied"
+                                    : "Copy"}
+                            </Button>
+
+                            <Button
+                                variant="outline"
+                                onClick={clearNewlyCreatedKey}
+                            >
+                                Done
+                            </Button>
+                        </div>
+                    </div>
+                </Card>
+            )}
+
+            <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <Card className="border-border/50 bg-card/60 p-4">
+                    <p className="text-sm text-muted-foreground">Total Keys</p>
+                    <h3 className="mt-2 text-3xl font-bold">{stats.total}</h3>
+                </Card>
+
+                <Card className="border-border/50 bg-card/60 p-4">
+                    <p className="text-sm text-muted-foreground">Active</p>
+                    <h3 className="mt-2 text-3xl font-bold text-emerald-400">
+                        {stats.active}
+                    </h3>
+                </Card>
+
+                <Card className="border-border/50 bg-card/60 p-4">
+                    <p className="text-sm text-muted-foreground">Revoked</p>
+                    <h3 className="mt-2 text-3xl font-bold text-red-400">
+                        {stats.revoked}
+                    </h3>
+                </Card>
+
+                <Card className="border-border/50 bg-card/60 p-4">
+                    <p className="text-sm text-muted-foreground">Used Keys</p>
+                    <h3 className="mt-2 text-3xl font-bold text-primary">
+                        {stats.used}
+                    </h3>
+                </Card>
+            </div>
+
+            <div className="grid gap-5 xl:grid-cols-[1fr_420px]">
+                <Card className="overflow-hidden border-border/50 bg-card/60">
+                    <div className="border-b border-border/50 bg-background/30 p-5">
+                        <div className="flex items-center gap-2">
+                            <KeyRound className="h-5 w-5 text-primary" />
+                            <h2 className="font-semibold">Keys</h2>
+                        </div>
+
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            Active and revoked API keys for this business.
                         </p>
                     </div>
+
+                    <div className="divide-y divide-border/50">
+                        {isLoading ? (
+                            <div className="flex min-h-[320px] items-center justify-center">
+                                <p className="text-sm text-muted-foreground">
+                                    Loading API keys...
+                                </p>
+                            </div>
+                        ) : apiKeys.length > 0 ? (
+                            apiKeys.map((apiKey) => (
+                                <div
+                                    key={apiKey.id}
+                                    className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between"
+                                >
+                                    <div className="flex items-start gap-4">
+                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/15">
+                                            <KeyRound className="h-6 w-6 text-primary" />
+                                        </div>
+
+                                        <div>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <h3 className="font-semibold">
+                                                    {apiKey.name}
+                                                </h3>
+
+                                                <span
+                                                    className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs capitalize ${getStatusClass(
+                                                        apiKey.status
+                                                    )}`}
+                                                >
+                                                    {getStatusIcon(apiKey.status)}
+                                                    {apiKey.status}
+                                                </span>
+                                            </div>
+
+                                            <p className="mt-2 font-mono text-sm text-muted-foreground">
+                                                {apiKey.key_prefix}
+                                                ••••••••••••••••••
+                                            </p>
+
+                                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                                <span>
+                                                    Created {formatDate(apiKey.created_at)}
+                                                </span>
+                                                <span>
+                                                    Last used {formatTimeAgo(apiKey.last_used_at)}
+                                                </span>
+                                                <span>
+                                                    Expires {formatDate(apiKey.expires_at)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-2">
+                                        {apiKey.status === "active" && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                    handleRevoke(apiKey)
+                                                }
+                                            >
+                                                Revoke
+                                            </Button>
+                                        )}
+
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleDelete(apiKey)}
+                                        >
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Delete
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="flex min-h-[320px] flex-col items-center justify-center p-8 text-center">
+                                <KeyRound className="mb-3 h-10 w-10 text-muted-foreground" />
+                                <p className="font-medium">No API keys yet</p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    Create your first API key to connect external systems.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </Card>
+
+                <div className="space-y-5">
+                    <Card className="border-border/50 bg-card/60">
+                        <div className="border-b border-border/50 bg-background/30 p-5">
+                            <div className="flex items-center gap-2">
+                                <Shield className="h-5 w-5 text-primary" />
+                                <h2 className="font-semibold">
+                                    Security Notes
+                                </h2>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 p-5 text-sm text-muted-foreground">
+                            <p>
+                                API keys should be stored securely and never exposed in frontend code.
+                            </p>
+
+                            <p>
+                                Use API keys only from trusted backend services.
+                            </p>
+
+                            <p>
+                                Revoke keys immediately if you suspect they were compromised.
+                            </p>
+                        </div>
+                    </Card>
+
+                    <Card className="border-border/50 bg-card/60">
+                        <div className="border-b border-border/50 bg-background/30 p-5">
+                            <h2 className="font-semibold">
+                                Example Usage
+                            </h2>
+                        </div>
+
+                        <div className="p-5">
+                            <pre className="overflow-x-auto rounded-xl border border-border/60 bg-background/70 p-4 text-xs text-muted-foreground">
+                                {`fetch("https://api.lumora.ai/v1/messages", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    channel: "webchat",
+    message: "Hello"
+  })
+})`}
+                            </pre>
+                        </div>
+                    </Card>
                 </div>
-            </Card>
+            </div>
 
-            <ApiKeyModal
-                open={isModalOpen}
-                businessId={currentBusinessId}
-                onClose={() => setIsModalOpen(false)}
-                onCreate={(newKey) => {
-                    setApiKeys((current) => [newKey, ...current])
-                }}
-            />
+            {isNewApiKeyOpen && (
+                <NewApiKeyModal
+                    open={isNewApiKeyOpen}
+                    onClose={() => setIsNewApiKeyOpen(false)}
+                />
+            )}
         </div>
-    )
-}
+    );
+};
 
-export default ApiKeysPage
+export default ApiKeysPage;

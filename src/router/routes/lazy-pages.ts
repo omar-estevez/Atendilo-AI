@@ -25,6 +25,9 @@ export const TermsPage = lazy(() =>
 export const SecurityPage = lazy(() =>
     import('@/principal/pages/security/SecurityPage')
 )
+export const AcceptInvitePage = lazy(() =>
+    import('@/principal/pages/accept-invitation/AcceptInvitePage')
+)
 
 // *****************************************
 // ************* DASHBOARD *****************

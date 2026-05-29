@@ -1,392 +1,444 @@
-import { useMemo, useState } from "react"
-import { currentBusinessId, mockLeads } from "@/admin/data/mock"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import {
-    Flame,
-    TrendingUp,
-    DollarSign,
-    Brain,
-    Filter,
-    Plus,
-    Snowflake,
-    MoreVertical,
-    Eye,
-    UserCheck,
-    CalendarPlus,
-    CheckCircle,
-    Trash2,
-} from "lucide-react"
-import type { Lead, LeadTemperature } from "@/admin/types/lead"
-import LeadFiltersPanel, { defaultLeadAdvancedFilters, type LeadAdvancedFilters } from "./filter-panel/LeadFiltersPanel"
-import NewLeadModal from "./create-lead/NewLeadModal"
-import ViewLeadModal from "./view-lead/ViewLeadModal"
+    // AlertTriangle,
+    Mail,
+    MessageSquare,
+    Phone,
+    RefreshCw,
+    Search,
+    User,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import type { LeadStatus } from "@/services/dashboard/leadService";
+import { useLeadsStore } from "@/store/dashboard/leadStore";
+import { useNavigate } from "react-router";
+import { getInitials, formatLabel, formatDate, getLeadStatusClass, getLeadIcon, getScoreClass } from "./helpers/LeadsHelpers";
+import NewBookingModal from "../bookings/new-booking/NewBookingModal";
+
+
 
 export const LeadsPage = () => {
-    const [temperatureFilter, setTemperatureFilter] = useState<"all" | LeadTemperature>("all")
-    const [highScoreOnly, setHighScoreOnly] = useState(false)
-    const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+    const navigate = useNavigate();
 
-    const [isNewLeadOpen, setIsNewLeadOpen] = useState(false)
-    const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
-    const [isViewLeadOpen, setIsViewLeadOpen] = useState(false)
+    const {
+        leads,
+        selectedLead,
+        isLoading,
+        error,
+        loadLeads,
+        selectLead,
+    } = useLeadsStore();
 
-    const [leads, setLeads] = useState<Lead[]>(
-        mockLeads.filter((item) => item.businessId === currentBusinessId)
-    )
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
+    const [isNewBookingOpen, setIsNewBookingOpen] = useState(false);
 
-    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
-    const [advancedFilters, setAdvancedFilters] =
-        useState<LeadAdvancedFilters>(defaultLeadAdvancedFilters)
+    useEffect(() => {
+        loadLeads();
+    }, [loadLeads]);
 
     const filteredLeads = useMemo(() => {
+        const search = searchTerm.toLowerCase();
+
         return leads.filter((lead) => {
-            const matchesTemperature =
-                temperatureFilter === "all" || lead.temperature === temperatureFilter
+            const matchesSearch =
+                lead.contactName.toLowerCase().includes(search) ||
+                (lead.email || "").toLowerCase().includes(search) ||
+                (lead.phone || "").toLowerCase().includes(search);
 
-            const matchesScore = !highScoreOnly || lead.aiScore >= 70
+            const matchesStatus =
+                statusFilter === "all" || lead.status === statusFilter;
 
-            const matchesAdvancedStatus =
-                advancedFilters.status === "all" || lead.status === advancedFilters.status
+            return matchesSearch && matchesStatus;
+        });
+    }, [leads, searchTerm, statusFilter]);
 
-            const matchesAdvancedSource =
-                advancedFilters.source === "all" || lead.source === advancedFilters.source
-
-            const matchesAdvancedScore = lead.aiScore >= advancedFilters.minScore
-
-            const matchesAdvancedValue = lead.value >= advancedFilters.minValue
-
-            return (
-                matchesTemperature &&
-                matchesScore &&
-                matchesAdvancedStatus &&
-                matchesAdvancedSource &&
-                matchesAdvancedScore &&
-                matchesAdvancedValue
-            )
-        })
-    }, [leads, temperatureFilter, highScoreOnly, advancedFilters])
-
-    const totalLeads = leads.length
-    const hotLeads = leads.filter((lead) => lead.temperature === "hot").length
-    const warmLeads = leads.filter((lead) => lead.temperature === "warm").length
-    const totalValue = leads.reduce((total, lead) => total + lead.value, 0)
-
-    const getTemperatureIcon = (temperature: LeadTemperature) => {
-        if (temperature === "hot") return <Flame className="w-3 h-3" />
-        if (temperature === "warm") return <TrendingUp className="w-3 h-3" />
-        return <Snowflake className="w-3 h-3" />
-    }
-
-    const getTemperatureClass = (temperature: LeadTemperature) => {
-        if (temperature === "hot") return "bg-red-500/20 text-red-400 border-red-500/30"
-        if (temperature === "warm") return "bg-amber-500/20 text-amber-400 border-amber-500/30"
-        return "bg-blue-500/20 text-blue-400 border-blue-500/30"
-    }
-
-    const getScoreColor = (score: number) => {
-        if (score >= 80) return "bg-emerald-400"
-        if (score >= 50) return "bg-amber-400"
-        return "bg-red-400"
-    }
-
-    const formatSource = (source: string) => {
-        if (source === "webchat") return "Web Chat"
-        if (source === "whatsapp") return "WhatsApp"
-        if (source === "sms") return "SMS"
-        if (source === "voice") return "Voice AI"
-        if (source === "email") return "Email"
-        return source
-    }
-
-    const handleAction = (action: string, lead: Lead) => {
-        console.log(`${action}:`, lead)
-        setOpenMenuId(null)
-    }
+    const stats = useMemo(() => {
+        return {
+            total: leads.length,
+            hot: leads.filter((lead) => lead.status === "hot").length,
+            warm: leads.filter((lead) => lead.status === "warm").length,
+            cold: leads.filter((lead) => lead.status === "cold").length,
+        };
+    }, [leads]);
 
     return (
-        <div className="space-y-6">
-            {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                <Card className="p-5 border-border/50">
-                    <p className="text-sm text-muted-foreground">Total Leads</p>
-                    <p className="text-3xl font-bold mt-1">{totalLeads}</p>
-                </Card>
-
-                <Card className="p-5 border-border/50 bg-linear-to-r from-red-500/5 to-transparent">
-                    <div className="flex items-center gap-2 mb-1">
-                        <Flame className="w-4 h-4 text-red-400" />
-                        <p className="text-sm text-muted-foreground">Hot Leads</p>
-                    </div>
-                    <p className="text-3xl font-bold text-red-400">{hotLeads}</p>
-                </Card>
-
-                <Card className="p-5 border-border/50 bg-linear-to-r from-amber-500/5 to-transparent">
-                    <div className="flex items-center gap-2 mb-1">
-                        <TrendingUp className="w-4 h-4 text-amber-400" />
-                        <p className="text-sm text-muted-foreground">Warm Leads</p>
-                    </div>
-                    <p className="text-3xl font-bold text-amber-400">{warmLeads}</p>
-                </Card>
-
-                <Card className="p-5 border-border/50 bg-linear-to-r from-emerald-500/5 to-transparent">
-                    <div className="flex items-center gap-2 mb-1">
-                        <DollarSign className="w-4 h-4 text-emerald-400" />
-                        <p className="text-sm text-muted-foreground">Pipeline Value</p>
-                    </div>
-                    <p className="text-3xl font-bold text-emerald-400">
-                        ${totalValue.toLocaleString()}
+        <div className="h-full px-5 py-6 sm:px-7 lg:px-8">
+            <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight">
+                        Leads
+                    </h1>
+                    <p className="text-sm text-muted-foreground">
+                        Track customer intent, AI score, urgency and conversion opportunities.
                     </p>
+                </div>
+
+                <Button
+                    variant="outline"
+                    onClick={loadLeads}
+                    disabled={isLoading}
+                >
+                    <RefreshCw
+                        className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""
+                            }`}
+                    />
+                    Refresh
+                </Button>
+            </div>
+
+            {error && (
+                <Card className="mb-4 border-red-500/30 bg-red-500/10 p-4">
+                    <p className="text-sm text-red-400">{error}</p>
+                </Card>
+            )}
+
+            <div className="mb-5 grid gap-4 md:grid-cols-4">
+                <Card className="border-border/50 bg-card/60 p-4">
+                    <p className="text-sm text-muted-foreground">Total Leads</p>
+                    <h3 className="mt-2 text-3xl font-bold">{stats.total}</h3>
+                </Card>
+
+                <Card className="border-border/50 bg-card/60 p-4">
+                    <p className="text-sm text-muted-foreground">Hot Leads</p>
+                    <h3 className="mt-2 text-3xl font-bold text-red-400">
+                        {stats.hot}
+                    </h3>
+                </Card>
+
+                <Card className="border-border/50 bg-card/60 p-4">
+                    <p className="text-sm text-muted-foreground">Warm Leads</p>
+                    <h3 className="mt-2 text-3xl font-bold text-amber-400">
+                        {stats.warm}
+                    </h3>
+                </Card>
+
+                <Card className="border-border/50 bg-card/60 p-4">
+                    <p className="text-sm text-muted-foreground">Cold Leads</p>
+                    <h3 className="mt-2 text-3xl font-bold text-blue-400">
+                        {stats.cold}
+                    </h3>
                 </Card>
             </div>
 
-            {/* Leads Table */}
-            <Card className="border-border/50 overflow-visible">
-                <div className="p-4 border-b border-border/50 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                        <h3 className="font-semibold">Lead Management</h3>
-                        <p className="text-sm text-muted-foreground">
-                            Track, qualify, and convert AI-captured leads.
-                        </p>
+            <div className="grid h-[calc(100vh-300px)] min-h-[620px] grid-cols-1 gap-5 xl:grid-cols-[520px_1fr]">
+                <Card className="flex min-h-0 flex-col overflow-hidden border-border/50 bg-card/60">
+                    <div className="border-b border-border/50 bg-background/30 p-4">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
+                            <input
+                                value={searchTerm}
+                                onChange={(event) =>
+                                    setSearchTerm(event.target.value)
+                                }
+                                placeholder="Search leads..."
+                                className="h-10 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+                            />
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            {(["all", "hot", "warm", "cold"] as const).map(
+                                (status) => (
+                                    <button
+                                        key={status}
+                                        onClick={() => setStatusFilter(status)}
+                                        className={[
+                                            "rounded-full border px-3 py-1 text-xs font-medium capitalize transition-colors",
+                                            statusFilter === status
+                                                ? "border-primary bg-primary/15 text-primary"
+                                                : "border-border bg-secondary/50 text-muted-foreground hover:text-foreground",
+                                        ].join(" ")}
+                                    >
+                                        {status}
+                                    </button>
+                                )
+                            )}
+                        </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                        {[
-                            { id: "all", label: "All" },
-                            { id: "hot", label: "Hot" },
-                            { id: "warm", label: "Warm" },
-                            { id: "cold", label: "Cold" },
-                        ].map((filter) => (
-                            <Button
-                                key={filter.id}
-                                variant={temperatureFilter === filter.id ? "outline" : "ghost"}
-                                size="sm"
-                                onClick={() => setTemperatureFilter(filter.id as "all" | LeadTemperature)}
-                                className={temperatureFilter === filter.id ? "border-primary text-primary" : ""}
-                            >
-                                {filter.label}
-                            </Button>
-                        ))}
+                    <div className="flex-1 overflow-y-auto">
+                        {isLoading ? (
+                            <div className="flex h-full items-center justify-center">
+                                <p className="text-sm text-muted-foreground">
+                                    Loading leads...
+                                </p>
+                            </div>
+                        ) : filteredLeads.length > 0 ? (
+                            <div className="divide-y divide-border/50">
+                                {filteredLeads.map((lead, index) => {
+                                    const isSelected =
+                                        selectedLead?.id === lead.id;
 
-                        <Button
-                            variant={highScoreOnly ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setHighScoreOnly((current) => !current)}
-                        >
-                            <Brain className="w-4 h-4 mr-2" />
-                            AI Score
-                        </Button>
+                                    return (
+                                        <motion.button
+                                            key={lead.id}
+                                            initial={{ opacity: 0, y: 8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: index * 0.03 }}
+                                            onClick={() => selectLead(lead)}
+                                            className={[
+                                                "w-full p-4 text-left transition-colors",
+                                                isSelected
+                                                    ? "bg-primary/10"
+                                                    : "hover:bg-secondary/40",
+                                            ].join(" ")}
+                                        >
+                                            <div className="flex gap-3">
+                                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary">
+                                                    {getInitials(lead.contactName)}
+                                                </div>
 
-                        <Button
-                            variant={showAdvancedFilters ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setShowAdvancedFilters((current) => !current)}
-                        >
-                            <Filter className="w-4 h-4 mr-2" />
-                            Filters
-                        </Button>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="min-w-0">
+                                                            <p className="truncate font-semibold">
+                                                                {lead.contactName}
+                                                            </p>
 
-                        <Button
-                            size="sm"
-                            onClick={() => setIsNewLeadOpen(true)}
-                            className="bg-primary hover:bg-primary/90"
-                        >
-                            <Plus className="w-4 h-4 mr-2" />
-                            New Lead
-                        </Button>
+                                                            <p className="mt-1 truncate text-xs text-muted-foreground">
+                                                                {lead.channelName} · {formatLabel(lead.intent)}
+                                                            </p>
+                                                        </div>
+
+                                                        <span className="shrink-0 text-xs text-muted-foreground">
+                                                            {formatDate(lead.lastActivityAt)}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="mt-3 flex flex-wrap gap-1.5">
+                                                        <span
+                                                            className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] capitalize ${getLeadStatusClass(
+                                                                lead.status
+                                                            )}`}
+                                                        >
+                                                            {getLeadIcon(lead.status)}
+                                                            {lead.status}
+                                                        </span>
+
+                                                        <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                                                            Score {lead.aiScore}%
+                                                        </span>
+
+                                                        {lead.urgency && (
+                                                            <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-400">
+                                                                {formatLabel(lead.urgency)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.button>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="flex h-full flex-col items-center justify-center p-6 text-center">
+                                <User className="mb-3 h-10 w-10 text-muted-foreground" />
+                                <p className="font-medium">No leads found</p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    Try another search or status filter.
+                                </p>
+                            </div>
+                        )}
                     </div>
-                </div>
+                </Card>
 
-                <div className="px-4 pb-4">
-                    <LeadFiltersPanel
-                        open={showAdvancedFilters}
-                        filters={advancedFilters}
-                        onChange={setAdvancedFilters}
-                        onReset={() => setAdvancedFilters(defaultLeadAdvancedFilters)}
-                    />
-                </div>
+                <Card className="flex min-h-0 flex-col overflow-hidden border-border/50 bg-card/60">
+                    {selectedLead ? (
+                        <div className="flex h-full flex-col">
+                            <div className="border-b border-border/50 p-5">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary/20 text-lg font-semibold text-primary">
+                                        {getInitials(selectedLead.contactName)}
+                                    </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="text-sm text-muted-foreground border-b border-border/50">
-                                <th className="text-left p-4">Name</th>
-                                <th className="text-left p-4">Contact</th>
-                                <th className="text-left p-4">Source</th>
-                                <th className="text-left p-4">Temperature</th>
-                                <th className="text-left p-4">Status</th>
-                                <th className="text-left p-4">AI Score</th>
-                                <th className="text-left p-4">Value</th>
-                                <th className="text-left p-4">Created</th>
-                                <th className="text-right p-4">Actions</th>
-                            </tr>
-                        </thead>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h2 className="text-xl font-semibold">
+                                                {selectedLead.contactName}
+                                            </h2>
 
-                        <tbody className="divide-y divide-border/50">
-                            {filteredLeads.length === 0 ? (
-                                <tr>
-                                    <td colSpan={9} className="p-10 text-center">
-                                        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-secondary/40">
-                                            <Brain className="h-5 w-5 text-muted-foreground" />
-                                        </div>
-                                        <h3 className="font-semibold">No leads found</h3>
-                                        <p className="mt-1 text-sm text-muted-foreground">
-                                            Try changing the lead temperature or AI score filter.
-                                        </p>
-                                    </td>
-                                </tr>
-                            ) : (
-                                filteredLeads.map((lead) => (
-                                    <tr key={lead.id} className="hover:bg-secondary/30">
-                                        <td className="p-4 font-medium">{lead.name}</td>
-
-                                        <td className="p-4">
-                                            <p className="text-sm">{lead.email}</p>
-                                            <p className="text-xs text-muted-foreground">{lead.phone}</p>
-                                        </td>
-
-                                        <td className="p-4">
-                                            <span className="text-sm">{formatSource(lead.source)}</span>
-                                        </td>
-
-                                        <td className="p-4">
                                             <span
-                                                className={`px-2 py-1 text-xs rounded-full border flex items-center gap-1 w-fit capitalize ${getTemperatureClass(
-                                                    lead.temperature
+                                                className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs capitalize ${getLeadStatusClass(
+                                                    selectedLead.status
                                                 )}`}
                                             >
-                                                {getTemperatureIcon(lead.temperature)}
-                                                {lead.temperature}
+                                                {getLeadIcon(selectedLead.status)}
+                                                {selectedLead.status} lead
                                             </span>
-                                        </td>
+                                        </div>
 
-                                        <td className="p-4">
-                                            <span className="px-2 py-1 text-xs rounded-full bg-secondary/50 border border-border/50 capitalize">
-                                                {lead.status.replace("_", " ")}
+                                        <div className="mt-2 flex flex-wrap gap-3 text-sm text-muted-foreground">
+                                            {selectedLead.email && (
+                                                <span className="flex items-center gap-1">
+                                                    <Mail className="h-4 w-4" />
+                                                    {selectedLead.email}
+                                                </span>
+                                            )}
+
+                                            {selectedLead.phone && (
+                                                <span className="flex items-center gap-1">
+                                                    <Phone className="h-4 w-4" />
+                                                    {selectedLead.phone}
+                                                </span>
+                                            )}
+
+                                            <span className="flex items-center gap-1">
+                                                <MessageSquare className="h-4 w-4" />
+                                                {selectedLead.channelName}
                                             </span>
-                                        </td>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-16 h-2 bg-secondary rounded-full overflow-hidden">
-                                                    <div
-                                                        className={`h-full rounded-full ${getScoreColor(lead.aiScore)}`}
-                                                        style={{ width: `${lead.aiScore}%` }}
-                                                    />
-                                                </div>
-                                                <span className="text-sm font-medium">{lead.aiScore}%</span>
-                                            </div>
-                                        </td>
+                            <div className="flex-1 overflow-y-auto p-5">
+                                <div className="mb-5 grid gap-4 md:grid-cols-4">
+                                    <div className="rounded-xl border border-border/60 bg-background/40 p-4">
+                                        <p className="text-xs text-muted-foreground">
+                                            AI Score
+                                        </p>
+                                        <p
+                                            className={`mt-1 text-2xl font-bold ${getScoreClass(
+                                                selectedLead.aiScore
+                                            )}`}
+                                        >
+                                            {selectedLead.aiScore}%
+                                        </p>
+                                    </div>
 
-                                        <td className="p-4 font-medium text-emerald-400">
-                                            ${lead.value.toLocaleString()}
-                                        </td>
+                                    <div className="rounded-xl border border-border/60 bg-background/40 p-4">
+                                        <p className="text-xs text-muted-foreground">
+                                            Intent
+                                        </p>
+                                        <p className="mt-1 font-medium">
+                                            {formatLabel(selectedLead.intent)}
+                                        </p>
+                                    </div>
 
-                                        <td className="p-4 text-muted-foreground">{lead.createdAt}</td>
+                                    <div className="rounded-xl border border-border/60 bg-background/40 p-4">
+                                        <p className="text-xs text-muted-foreground">
+                                            Urgency
+                                        </p>
+                                        <p className="mt-1 font-medium">
+                                            {formatLabel(selectedLead.urgency)}
+                                        </p>
+                                    </div>
 
-                                        <td className="p-4 text-right">
-                                            <div className="relative flex justify-end">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        setOpenMenuId(openMenuId === lead.id ? null : lead.id)
-                                                    }
-                                                >
-                                                    <MoreVertical className="w-4 h-4" />
-                                                </Button>
+                                    <div className="rounded-xl border border-border/60 bg-background/40 p-4">
+                                        <p className="text-xs text-muted-foreground">
+                                            Sentiment
+                                        </p>
+                                        <p className="mt-1 font-medium">
+                                            {formatLabel(selectedLead.sentiment)}
+                                        </p>
+                                    </div>
+                                </div>
 
-                                                {openMenuId === lead.id && (
-                                                    <div className="absolute right-0 top-9 z-50 w-48 rounded-lg border border-border/60 bg-background shadow-xl overflow-hidden">
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedLead(lead)
-                                                                setIsViewLeadOpen(true)
-                                                                setOpenMenuId(null)
-                                                            }}
-                                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-secondary/60 transition-colors"
-                                                        >
-                                                            <Eye className="w-4 h-4 text-primary" />
-                                                            View Lead
-                                                        </button>
+                                <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4">
+                                    <p className="text-sm font-semibold text-primary">
+                                        AI Summary
+                                    </p>
 
-                                                        <button
-                                                            onClick={() => handleAction("Contact Lead", lead)}
-                                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-secondary/60 transition-colors"
-                                                        >
-                                                            <UserCheck className="w-4 h-4 text-emerald-400" />
-                                                            Contact Lead
-                                                        </button>
+                                    <p className="mt-2 text-sm text-muted-foreground">
+                                        {selectedLead.aiSummary ||
+                                            "No AI summary available yet."}
+                                    </p>
+                                </div>
 
-                                                        <button
-                                                            onClick={() => handleAction("Create Booking", lead)}
-                                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-secondary/60 transition-colors"
-                                                        >
-                                                            <CalendarPlus className="w-4 h-4 text-blue-400" />
-                                                            Create Booking
-                                                        </button>
+                                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                                    <div className="rounded-xl border border-border/60 bg-background/40 p-4">
+                                        <p className="text-xs text-muted-foreground">
+                                            Lead Source
+                                        </p>
+                                        <p className="mt-1 font-medium">
+                                            {formatLabel(selectedLead.source)}
+                                        </p>
+                                    </div>
 
-                                                        <button
-                                                            onClick={() => handleAction("Mark as Won", lead)}
-                                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-secondary/60 transition-colors"
-                                                        >
-                                                            <CheckCircle className="w-4 h-4 text-emerald-400" />
-                                                            Mark as Won
-                                                        </button>
+                                    <div className="rounded-xl border border-border/60 bg-background/40 p-4">
+                                        <p className="text-xs text-muted-foreground">
+                                            Last Activity
+                                        </p>
+                                        <p className="mt-1 font-medium">
+                                            {formatDate(selectedLead.lastActivityAt)}
+                                        </p>
+                                    </div>
+                                </div>
 
-                                                        <button
-                                                            onClick={() => handleAction("Delete Lead", lead)}
-                                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                            Delete
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </Card>
+                                <div className="mt-5 flex flex-wrap gap-3">
+                                    <Button
+                                        onClick={() =>
+                                            navigate(
+                                                `/dashboard/conversations?conversationId=${selectedLead.conversationId}`
+                                            )
+                                        }
+                                    >
+                                        Open Conversation
+                                    </Button>
 
-            <NewLeadModal
-                open={isNewLeadOpen}
-                businessId={currentBusinessId}
-                onClose={() => setIsNewLeadOpen(false)}
-                onCreate={(newLead) => {
-                    setLeads((current) => [newLead, ...current])
-                }}
-            />
+                                    <Button variant="outline">
+                                        Mark Follow-up
+                                    </Button>
 
-            <ViewLeadModal
-                open={isViewLeadOpen}
-                lead={selectedLead}
-                onClose={() => {
-                    setIsViewLeadOpen(false)
-                    setSelectedLead(null)
-                }}
-                onContactLead={(lead) => {
-                    console.log("Contact lead:", lead)
-                }}
-                onCreateBooking={(lead) => {
-                    console.log("Create booking:", lead)
-                }}
-                onMarkWon={(lead) => {
-                    setLeads((current) =>
-                        current.map((item) =>
-                            item.id === lead.id ? { ...item, status: "won" } : item
-                        )
-                    )
-                    setIsViewLeadOpen(false)
-                    setSelectedLead(null)
-                }}
-            />
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setIsNewBookingOpen(true)}
+                                    >
+                                        Create Booking
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+                            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+                                <User className="h-7 w-7 text-primary" />
+                            </div>
+
+                            <h2 className="text-xl font-semibold">
+                                Select a lead
+                            </h2>
+
+                            <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+                                Choose a lead from the left to inspect AI score,
+                                intent, urgency, sentiment and contact details.
+                            </p>
+                        </div>
+                    )}
+                </Card>
+            </div>
+
+            {isNewBookingOpen && (
+                <NewBookingModal
+                    open={isNewBookingOpen}
+                    onClose={() => setIsNewBookingOpen(false)}
+                    defaultValues={
+                        selectedLead
+                            ? {
+                                customerName: selectedLead.contactName,
+                                serviceName: formatLabel(selectedLead.intent),
+                                estimatedValue:
+                                    selectedLead.status === "hot"
+                                        ? 149
+                                        : selectedLead.status === "warm"
+                                            ? 79
+                                            : 49,
+                                notes: selectedLead.aiSummary || "",
+                                contactId: selectedLead.contactId,
+                                conversationId: selectedLead.conversationId,
+                                source: "lead",
+                            }
+                            : undefined
+                    }
+                />
+            )}
         </div>
-    )
-}
+    );
+};
 
-export default LeadsPage
+export default LeadsPage;

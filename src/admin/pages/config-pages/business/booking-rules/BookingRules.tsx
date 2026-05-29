@@ -1,7 +1,6 @@
 import type { BusinessBookingTypes } from "@/admin/types";
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { CalendarClock, Save } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { CalendarClock, Link } from "lucide-react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 
 interface BookingRulesProps {
@@ -12,28 +11,35 @@ interface BookingRulesProps {
     ) => ReactNode;
     inputClass: string;
     smallSelectClass: string;
-    showSavedMessage: (message: string) => void;
+    showSavedMessage?: (message: string) => void;
     bookingRules: BusinessBookingTypes;
     setBookingRules: Dispatch<SetStateAction<BusinessBookingTypes>>;
 }
 
-export const BookingRules = ({ sectionHeader, inputClass, smallSelectClass, showSavedMessage, bookingRules, setBookingRules }: BookingRulesProps) => {
+export const BookingRules = ({
+    sectionHeader,
+    inputClass,
+    smallSelectClass,
+    bookingRules,
+    setBookingRules,
+}: BookingRulesProps) => {
     return (
-        <Card className="border-border/50">
-            <div className="border-b border-border/50 p-4">
+        <Card className="overflow-hidden border-border/50 bg-card/60">
+            <div className="border-b border-border/50 bg-background/30 p-5">
                 {sectionHeader(
                     <CalendarClock className="h-5 w-5" />,
                     "Booking Rules",
-                    "Control how appointments are scheduled."
+                    "Control how appointments are scheduled and confirmed."
                 )}
             </div>
 
-            <div className="space-y-4 p-4">
+            <div className="space-y-5 p-5">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                         <label className="mb-2 block text-sm font-medium">
                             Minimum Notice
                         </label>
+
                         <select
                             value={bookingRules.minimumNotice}
                             onChange={(event) =>
@@ -55,6 +61,7 @@ export const BookingRules = ({ sectionHeader, inputClass, smallSelectClass, show
                         <label className="mb-2 block text-sm font-medium">
                             Buffer Time
                         </label>
+
                         <select
                             value={bookingRules.bufferTime}
                             onChange={(event) =>
@@ -77,6 +84,7 @@ export const BookingRules = ({ sectionHeader, inputClass, smallSelectClass, show
                         <label className="mb-2 block text-sm font-medium">
                             Require Deposit
                         </label>
+
                         <select
                             value={bookingRules.requireDeposit}
                             onChange={(event) =>
@@ -93,9 +101,11 @@ export const BookingRules = ({ sectionHeader, inputClass, smallSelectClass, show
                     </div>
 
                     <div>
-                        <label className="mb-2 block text-sm font-medium">
+                        <label className="mb-2 flex items-center gap-2 text-sm font-medium">
+                            <Link className="h-4 w-4 text-primary" />
                             Booking Link
                         </label>
+
                         <input
                             value={bookingRules.bookingLink}
                             onChange={(event) =>
@@ -104,19 +114,22 @@ export const BookingRules = ({ sectionHeader, inputClass, smallSelectClass, show
                                     bookingLink: event.target.value,
                                 })
                             }
+                            placeholder="https://calendly.com/your-business"
                             className={inputClass}
                         />
                     </div>
                 </div>
 
-                <Button
-                    onClick={() => showSavedMessage("Booking rules saved")}
-                    className="bg-primary hover:bg-primary/90"
-                >
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Changes
-                </Button>
+                <div className="rounded-xl border border-primary/20 bg-primary/10 p-4">
+                    <p className="text-sm font-medium text-primary">
+                        Booking AI Behavior
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        Lumora will use these rules before offering appointment
+                        times or confirming bookings.
+                    </p>
+                </div>
             </div>
         </Card>
-    )
-}
+    );
+};

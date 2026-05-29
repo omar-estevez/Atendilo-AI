@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink } from "react-router";
+import { NavLink, useNavigate } from "react-router";
 import {
     Bot,
     ChevronDown,
@@ -52,6 +52,9 @@ export const Sidebar = ({
     sidebarOpen,
     onCloseSidebar,
 }: SidebarProps) => {
+
+    const navigate = useNavigate();
+
     const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
 
     const { business, profile, subscription, modules, hasModule, logout } = useAuthStore();
@@ -135,6 +138,7 @@ export const Sidebar = ({
 
     const handleLogout = async () => {
         await logout();
+        navigate("/login", { replace: true });
     };
 
     return (
@@ -217,9 +221,15 @@ export const Sidebar = ({
                                         </button>
 
                                         <div className="mt-1 border-t border-border/50 pt-1">
-                                            <button className="flex w-full items-center gap-2 rounded-lg p-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+                                            <button
+                                                onClick={() => {
+                                                    setWorkspaceMenuOpen(false);
+                                                    navigate("/dashboard/business");
+                                                }}
+                                                className="flex w-full items-center gap-2 rounded-lg p-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                                            >
                                                 <Plus className="h-4 w-4" />
-                                                Add Workspace
+                                                Business Settings
                                             </button>
                                         </div>
                                     </div>
@@ -283,7 +293,7 @@ export const Sidebar = ({
                                         Unlock AI voice, advanced automations, and premium channels.
                                     </p>
 
-                                    <button className="cursor-pointer w-full rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+                                    <button onClick={() => navigate("/dashboard/billing")} className="cursor-pointer w-full rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
                                         Upgrade Plan
                                     </button>
                                 </div>

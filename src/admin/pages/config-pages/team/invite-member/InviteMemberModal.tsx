@@ -1,185 +1,216 @@
-import { useState } from "react"
-import { MailPlus, Plus, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import type { TeamMember, TeamRole } from "@/admin/types/team"
+import { useState } from "react";
+import { Mail, ShieldCheck, UserPlus, X } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/store/authStore";
+import { useTeamInvitationsStore } from "@/store/dashboard/teamInvitationsStore";
+import type { UserRole } from "@/services/businessService";
 
 interface InviteMemberModalProps {
-    open: boolean
-    businessId: string
-    onClose: () => void
-    onInvite: (member: TeamMember) => void
+    open: boolean;
+    onClose: () => void;
 }
 
-const roleOptions: { label: string; value: TeamRole; description: string }[] = [
+const roleOptions: { value: UserRole; label: string; description: string }[] = [
     {
-        label: "Admin",
         value: "admin",
-        description: "Can manage team, settings, and business configuration.",
+        label: "Admin",
+        description: "Can manage settings, team, integrations and operations.",
     },
     {
-        label: "Manager",
-        value: "manager",
-        description: "Can manage conversations, leads, bookings, and workflows.",
-    },
-    {
-        label: "Agent",
         value: "agent",
-        description: "Can reply to customers and manage assigned conversations.",
+        label: "Agent",
+        description: "Can manage conversations, leads and bookings.",
     },
     {
-        label: "Viewer",
         value: "viewer",
-        description: "Can view data but cannot make changes.",
+        label: "Viewer",
+        description: "Can only view dashboard data and reports.",
     },
-]
-
-const getInitials = (name: string) => {
-    return name
-        .split(" ")
-        .map((part) => part[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase()
-}
+];
 
 export const InviteMemberModal = ({
     open,
-    businessId,
     onClose,
-    onInvite,
 }: InviteMemberModalProps) => {
-    const [name, setName] = useState("")
-    const [email, setEmail] = useState("")
-    const [role, setRole] = useState<TeamRole>("agent")
+    const business = useAuthStore((state) => state.business);
+    const profile = useAuthStore((state) => state.profile);
+    const createInvitation = useTeamInvitationsStore(
+        (state) => state.createInvitation
+    );
 
-    if (!open) return null
+    const [email, setEmail] = useState("");
+    const [role, setRole] = useState<UserRole>("agent");
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault()
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
 
-        if (!name.trim() || !email.trim()) return
+    if (!open) return null;
 
-        const newMember: TeamMember = {
-            id: `team_${Date.now()}`,
-            businessId,
-            name,
-            email,
-            role,
-            avatar: getInitials(name),
-            status: "invited",
-            lastActive: "Invitation sent",
-            joinedAt: "Pending",
+    const resetForm = () => {
+        setEmail("");
+        setRole("agent");
+        setFormError(null);
+    };
+
+    const handleClose = () => {
+        resetForm();
+        onClose();
+    };
+
+    const isValidEmail = (value: string) => {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    };
+
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+
+        if (!business) {
+            setFormError("No business found.");
+            return;
         }
 
-        onInvite(newMember)
+        if (!isValidEmail(email)) {
+            setFormError("Enter a valid email address.");
+            return;
+        }
 
-        setName("")
-        setEmail("")
-        setRole("agent")
-        onClose()
-    }
+        try {
+            setIsSubmitting(true);
+            setFormError(null);
+
+            await createInvitation({
+                business_id: business.id,
+                email,
+                role,
+                invited_by: profile?.id || null,
+            });
+
+            handleClose();
+        } catch (error) {
+            setFormError(
+                error instanceof Error
+                    ? error.message
+                    : "Failed to invite member"
+            );
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
-            <div className="w-full max-w-xl rounded-2xl border border-border/60 bg-background shadow-2xl">
-                <div className="flex items-start justify-between border-b border-border/60 p-5">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-                            <MailPlus className="h-5 w-5 text-primary-foreground" />
-                        </div>
-
-                        <div>
-                            <h2 className="text-xl font-bold">Invite Team Member</h2>
-                            <p className="text-sm text-muted-foreground">
-                                Add someone to help manage conversations, bookings, and leads.
-                            </p>
-                        </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-border/60 bg-background shadow-2xl">
+                <div className="flex items-center justify-between border-b border-border/50 px-5 py-4">
+                    <div>
+                        <h2 className="text-lg font-semibold">
+                            Invite Team Member
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                            Send an invitation link to join this Lumora workspace.
+                        </p>
                     </div>
 
-                    <Button variant="ghost" size="sm" onClick={onClose}>
-                        <X className="h-4 w-4" />
-                    </Button>
+                    <button
+                        type="button"
+                        onClick={handleClose}
+                        className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5 p-5">
-                    <div>
-                        <label className="mb-2 block text-sm font-medium">Full Name</label>
-                        <input
-                            value={name}
-                            onChange={(event) => setName(event.target.value)}
-                            placeholder="Example: Sofia Ramirez"
-                            className="w-full rounded-lg border border-border/60 bg-secondary/30 px-3 py-2 text-sm outline-none focus:border-primary"
-                        />
+                    {formError && (
+                        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+                            <p className="text-sm text-red-400">
+                                {formError}
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4">
+                        <p className="flex items-center gap-2 text-sm font-semibold text-primary">
+                            <ShieldCheck className="h-4 w-4" />
+                            Secure Invitation Flow
+                        </p>
+
+                        <p className="mt-2 text-sm text-muted-foreground">
+                            The person will not be added as a real user until they accept the invitation.
+                        </p>
                     </div>
 
                     <div>
-                        <label className="mb-2 block text-sm font-medium">Email</label>
+                        <label className="mb-2 flex items-center gap-2 text-sm font-medium">
+                            <Mail className="h-4 w-4 text-primary" />
+                            Email Address
+                        </label>
+
                         <input
                             type="email"
                             value={email}
                             onChange={(event) => setEmail(event.target.value)}
-                            placeholder="sofia@business.com"
-                            className="w-full rounded-lg border border-border/60 bg-secondary/30 px-3 py-2 text-sm outline-none focus:border-primary"
+                            placeholder="teammate@example.com"
+                            className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
                         />
                     </div>
 
                     <div>
-                        <label className="mb-2 block text-sm font-medium">Role</label>
+                        <label className="mb-3 block text-sm font-medium">
+                            Role
+                        </label>
 
-                        <div className="grid grid-cols-1 gap-2">
+                        <div className="grid gap-3">
                             {roleOptions.map((option) => {
-                                const selected = role === option.value
+                                const isSelected = role === option.value;
 
                                 return (
                                     <button
                                         key={option.value}
                                         type="button"
                                         onClick={() => setRole(option.value)}
-                                        className={`rounded-lg border px-3 py-3 text-left transition-colors ${selected
-                                                ? "border-primary bg-primary/20"
-                                                : "border-border/60 bg-secondary/30 hover:border-primary/60"
-                                            }`}
+                                        className={[
+                                            " cursor-pointer rounded-xl border p-4 text-left transition-colors",
+                                            isSelected
+                                                ? "border-primary bg-primary/15"
+                                                : "border-border bg-background hover:bg-secondary/40",
+                                        ].join(" ")}
                                     >
-                                        <p
-                                            className={`text-sm font-medium ${selected ? "text-primary" : ""
-                                                }`}
-                                        >
+                                        <p className="font-medium capitalize">
                                             {option.label}
                                         </p>
-                                        <p className="mt-1 text-xs text-muted-foreground">
+                                        <p className="mt-1 text-sm text-muted-foreground">
                                             {option.description}
                                         </p>
                                     </button>
-                                )
+                                );
                             })}
                         </div>
                     </div>
 
-                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-                        <p className="text-sm text-muted-foreground">
-                            This will create a pending invitation. Later, with Supabase, the
-                            user will receive an email invite and create their account.
-                        </p>
-                    </div>
-
-                    <div className="flex justify-end gap-2 border-t border-border/60 pt-4">
-                        <Button type="button" variant="outline" onClick={onClose}>
+                    <div className="flex justify-end gap-3 border-t border-border/50 pt-5">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleClose}
+                            disabled={isSubmitting}
+                        >
                             Cancel
                         </Button>
 
                         <Button
                             type="submit"
-                            disabled={!name.trim() || !email.trim()}
+                            disabled={isSubmitting}
                             className="bg-primary hover:bg-primary/90"
                         >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Invite Member
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            {isSubmitting ? "Creating..." : "Create Invite"}
                         </Button>
                     </div>
                 </form>
             </div>
         </div>
-    )
-}
+    );
+};
 
-export default InviteMemberModal
+export default InviteMemberModal;

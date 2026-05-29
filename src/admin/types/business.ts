@@ -28,6 +28,10 @@ export type BusinessProfileType = {
     businessName: string;
     industry: string;
     address: string;
+    city: string;
+    state: string;
+    country: string;
+    timezone: string;
     email: string;
     phone: string;
     website: string;

@@ -21,7 +21,34 @@ export interface Business {
     phone: string | null;
     email: string | null;
     website: string | null;
+
+    address: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+    timezone: string | null;
+
+    settings: Record<string, unknown>;
+
     created_at: string;
+    updated_at: string | null;
+}
+
+export interface UpdateBusinessPayload {
+    name?: string;
+    industry?: string | null;
+    logo_url?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    website?: string | null;
+
+    address?: string | null;
+    city?: string | null;
+    state?: string | null;
+    country?: string | null;
+    timezone?: string | null;
+
+    settings?: Record<string, unknown>;
 }
 
 export interface Plan {
@@ -105,13 +132,14 @@ export const businessService = {
 
     async updateBusiness(
         businessId: string,
-        payload: Partial<
-            Pick<Business, "name" | "industry" | "logo_url" | "phone" | "email" | "website">
-        >
+        payload: UpdateBusinessPayload
     ) {
         const { data, error } = await supabase
             .from("businesses")
-            .update(payload)
+            .update({
+                ...payload,
+                updated_at: new Date().toISOString(),
+            })
             .eq("id", businessId)
             .select()
             .single();
@@ -130,6 +158,34 @@ export const businessService = {
         const { data, error } = await supabase
             .from("profiles")
             .update(payload)
+            .eq("id", profileId)
+            .select()
+            .single();
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        return data as Profile;
+    },
+
+    async getTeamMembers() {
+        const { data, error } = await supabase
+            .from("profiles")
+            .select("*")
+            .order("created_at", { ascending: true });
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        return data as Profile[];
+    },
+
+    async updateTeamMemberRole(profileId: string, role: UserRole) {
+        const { data, error } = await supabase
+            .from("profiles")
+            .update({ role })
             .eq("id", profileId)
             .select()
             .single();

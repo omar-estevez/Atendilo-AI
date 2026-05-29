@@ -1,6 +1,6 @@
-export type ChannelType = "whatsapp" | "sms" | "webchat" | "voice" | "email"
+export type ChannelType = "whatsapp" | "sms" | "webchat" | "email"
 
-export type ChannelStatus = "online" | "offline" | "upgrade" | "not_connected"
+export type ChannelStatus = "active" | "inactive" | "error"
 
 export interface Channel {
     id: ChannelType

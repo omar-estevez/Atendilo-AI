@@ -6,11 +6,13 @@ import {
     type Business,
     type Profile,
     type Subscription,
+    type UpdateBusinessPayload,
 } from "../services/businessService";
 import {
     modulesService,
     type BusinessModule,
 } from "../services/modulesService";
+import { supabase } from "@/lib/supabase";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -33,12 +35,18 @@ interface AuthStore {
     quickCheckAuth: () => Promise<void>;
     initializeAuth: () => Promise<void>;
     login: (email: string, password: string) => Promise<void>;
-    register: (email: string, password: string) => Promise<void>;
+    register: (
+        email: string,
+        password: string,
+        fullName: string,
+        businessName?: string
+    ) => Promise<void>;
     logout: () => Promise<void>;
     loadUserData: () => Promise<void>;
     refreshModules: () => Promise<void>;
     hasModule: (moduleKey: string) => boolean;
     clearError: () => void;
+    updateBusiness: (payload: UpdateBusinessPayload) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
@@ -207,22 +215,106 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         }
     },
 
-    register: async (email: string, password: string) => {
+    register: async (
+        email: string,
+        password: string,
+        fullName: string,
+        businessName?: string
+    ) => {
         try {
-            set({ isLoading: true, error: null });
+            set({
+                isLoading: true,
+                error: null,
+                loadingStep: "Creating your Lumora account...",
+            });
 
-            const data = await authService.signUp(email, password);
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        full_name: fullName,
+                        business_name: businessName || null,
+                    },
+                },
+            });
+
+            if (error) {
+                throw new Error(error.message);
+            }
+
+            const user = data.user;
+
+            if (!user) {
+                throw new Error("No user returned after registration");
+            }
+
+            /**
+             * Normal signup:
+             * Create business + profile as owner.
+             *
+             * Invitation signup:
+             * Do NOT create business here.
+             * The accept-invite flow will assign business_id and role.
+             */
+            if (businessName) {
+                set({
+                    loadingStep: "Setting up your business workspace...",
+                });
+
+                const slug = businessName
+                    .toLowerCase()
+                    .trim()
+                    .replace(/[^a-z0-9]+/g, "-")
+                    .replace(/^-+|-+$/g, "");
+
+                const { data: businessData, error: businessError } =
+                    await supabase
+                        .from("businesses")
+                        .insert({
+                            name: businessName,
+                            slug: `${slug}-${Date.now()}`,
+                            industry: null,
+                            settings: {},
+                        })
+                        .select()
+                        .single();
+
+                if (businessError) {
+                    throw new Error(businessError.message);
+                }
+
+                const { error: profileError } = await supabase
+                    .from("profiles")
+                    .insert({
+                        id: user.id,
+                        business_id: businessData.id,
+                        full_name: fullName,
+                        email,
+                        role: "owner",
+                    });
+
+                if (profileError) {
+                    throw new Error(profileError.message);
+                }
+            }
 
             set({
+                user,
                 session: data.session,
-                user: data.user,
                 isAuthenticated: Boolean(data.session),
+                isInitialized: true,
                 isLoading: false,
+                loadingStep: null,
             });
         } catch (error) {
             set({
-                error: error instanceof Error ? error.message : "Register failed",
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to register",
                 isLoading: false,
+                loadingStep: null,
             });
 
             throw error;
@@ -319,5 +411,43 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
     clearError: () => {
         set({ error: null });
+    },
+
+    updateBusiness: async (payload) => {
+        try {
+            const currentBusiness = get().business;
+
+            if (!currentBusiness) {
+                throw new Error("No business found");
+            }
+
+            set({
+                isLoading: true,
+                error: null,
+                loadingStep: "Updating business settings...",
+            });
+
+            const updatedBusiness = await businessService.updateBusiness(
+                currentBusiness.id,
+                payload
+            );
+
+            set({
+                business: updatedBusiness,
+                isLoading: false,
+                loadingStep: null,
+            });
+        } catch (error) {
+            set({
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to update business",
+                isLoading: false,
+                loadingStep: null,
+            });
+
+            throw error;
+        }
     },
 }));

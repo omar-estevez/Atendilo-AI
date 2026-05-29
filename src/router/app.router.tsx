@@ -6,6 +6,7 @@ import { HomePage } from "@/principal/pages/home/HomePage";
 import { MainPage } from "@/admin/pages/main-pages/main/MainPage";
 
 import {
+    AcceptInvitePage,
     ActivityPage,
     AnalyticsPage,
     ApiKeysPage,
@@ -80,6 +81,10 @@ export const appRouter = createBrowserRouter([
             {
                 path: "security",
                 element: <SecurityPage />,
+            },
+            {
+                path: "accept-invite",
+                element: <AcceptInvitePage />,
             },
         ],
     },

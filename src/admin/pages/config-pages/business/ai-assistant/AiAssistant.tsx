@@ -1,7 +1,6 @@
 import type { AiAssistantType } from "@/admin/types";
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Brain, Save } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Brain, MessageSquareText, Sparkles } from "lucide-react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 
 interface AiAssistantProps {
@@ -14,26 +13,44 @@ interface AiAssistantProps {
     setAiAssistant: Dispatch<SetStateAction<AiAssistantType>>;
     inputClass: string;
     smallSelectClass: string;
-    showSavedMessage: (message: string) => void;
+    showSavedMessage?: (message: string) => void;
 }
-export const AiAssistant = ({ sectionHeader, aiAssistant, setAiAssistant, inputClass, smallSelectClass, showSavedMessage }: AiAssistantProps) => {
 
+export const AiAssistant = ({
+    sectionHeader,
+    aiAssistant,
+    setAiAssistant,
+    inputClass,
+    smallSelectClass,
+}: AiAssistantProps) => {
     return (
-        <Card className="border-border/50">
-            <div className="border-b border-border/50 p-4">
+        <Card className="overflow-hidden border-border/50 bg-card/60">
+            <div className="border-b border-border/50 bg-background/30 p-5">
                 {sectionHeader(
                     <Brain className="h-5 w-5" />,
                     "AI Assistant",
-                    "Define how Lumora should speak and act with customers."
+                    "Define how Lumora should speak, sell, book, and escalate."
                 )}
             </div>
 
-            <div className="space-y-4 p-4">
+            <div className="space-y-5 p-5">
+                <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4">
+                    <p className="flex items-center gap-2 text-sm font-semibold text-primary">
+                        <Sparkles className="h-4 w-4" />
+                        AI Behavior
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        These settings will become part of the AI system context
+                        when replying to customers.
+                    </p>
+                </div>
+
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                         <label className="mb-2 block text-sm font-medium">
                             AI Assistant Name
                         </label>
+
                         <input
                             value={aiAssistant.name}
                             onChange={(event) =>
@@ -42,12 +59,16 @@ export const AiAssistant = ({ sectionHeader, aiAssistant, setAiAssistant, inputC
                                     name: event.target.value,
                                 })
                             }
+                            placeholder="Sofia"
                             className={inputClass}
                         />
                     </div>
 
                     <div>
-                        <label className="mb-2 block text-sm font-medium">Tone</label>
+                        <label className="mb-2 block text-sm font-medium">
+                            Tone
+                        </label>
+
                         <select
                             value={aiAssistant.tone}
                             onChange={(event) =>
@@ -73,6 +94,7 @@ export const AiAssistant = ({ sectionHeader, aiAssistant, setAiAssistant, inputC
                         <label className="mb-2 block text-sm font-medium">
                             Main Goal
                         </label>
+
                         <input
                             value={aiAssistant.goal}
                             onChange={(event) =>
@@ -81,6 +103,7 @@ export const AiAssistant = ({ sectionHeader, aiAssistant, setAiAssistant, inputC
                                     goal: event.target.value,
                                 })
                             }
+                            placeholder="Capture leads and book appointments"
                             className={inputClass}
                         />
                     </div>
@@ -89,6 +112,7 @@ export const AiAssistant = ({ sectionHeader, aiAssistant, setAiAssistant, inputC
                         <label className="mb-2 block text-sm font-medium">
                             Language
                         </label>
+
                         <select
                             value={aiAssistant.language}
                             onChange={(event) =>
@@ -110,6 +134,7 @@ export const AiAssistant = ({ sectionHeader, aiAssistant, setAiAssistant, inputC
                     <label className="mb-2 block text-sm font-medium">
                         Response Style
                     </label>
+
                     <input
                         value={aiAssistant.responseStyle}
                         onChange={(event) =>
@@ -118,16 +143,19 @@ export const AiAssistant = ({ sectionHeader, aiAssistant, setAiAssistant, inputC
                                 responseStyle: event.target.value,
                             })
                         }
+                        placeholder="Short, clear, sales-focused"
                         className={inputClass}
                     />
                 </div>
 
                 <div>
-                    <label className="mb-2 block text-sm font-medium">
-                        Tell Lumora how the AI should respond to customers
+                    <label className="mb-2 flex items-center gap-2 text-sm font-medium">
+                        <MessageSquareText className="h-4 w-4 text-primary" />
+                        AI Instructions
                     </label>
+
                     <textarea
-                        rows={4}
+                        rows={6}
                         value={aiAssistant.instructions}
                         onChange={(event) =>
                             setAiAssistant({
@@ -135,18 +163,11 @@ export const AiAssistant = ({ sectionHeader, aiAssistant, setAiAssistant, inputC
                                 instructions: event.target.value,
                             })
                         }
+                        placeholder="Tell Lumora how to respond to customers..."
                         className={`${inputClass} resize-none`}
                     />
                 </div>
-
-                <Button
-                    onClick={() => showSavedMessage("AI assistant settings saved")}
-                    className="bg-primary hover:bg-primary/90"
-                >
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Changes
-                </Button>
             </div>
         </Card>
-    )
-}
+    );
+};

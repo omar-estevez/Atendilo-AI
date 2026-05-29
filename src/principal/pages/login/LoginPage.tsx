@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/authStore';
 import { motion } from 'framer-motion';
 import { Sparkles, Check, Mail, EyeOff, Eye, ArrowRight, Lock } from 'lucide-react';
 import React, { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 export const LoginPage = () => {
     const navigate = useNavigate();
@@ -15,19 +15,24 @@ export const LoginPage = () => {
 
     const { login, isLoading, error, clearError, isInitialized, isAuthenticated, loadingStep } = useAuthStore();
 
+    const [searchParams] = useSearchParams();
+
+    const redirect = searchParams.get("redirect") || "/dashboard";
+
     useEffect(() => {
         if (isInitialized && isAuthenticated) {
-            navigate("/dashboard", { replace: true });
+            navigate(redirect, { replace: true });
         }
-    }, [isInitialized, isAuthenticated, navigate]);
+    }, [isInitialized, isAuthenticated, navigate, redirect]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         clearError();
+
         try {
             await login(email, password);
-            navigate("/dashboard", { replace: true });
+            navigate(redirect, { replace: true });
         } catch {
             // Error already handled by Zustand
         }
@@ -182,6 +187,17 @@ export const LoginPage = () => {
                         <div className="flex-1 h-px bg-border" />
                     </div>
 
+                    {redirect.includes("/accept-invite") && (
+                        <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/10 p-4">
+                            <p className="text-sm font-semibold text-primary">
+                                Team invitation detected
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Sign in with the invited email to continue accepting your workspace invitation.
+                            </p>
+                        </div>
+                    )}
+
                     {/* Login Form */}
                     <form onSubmit={handleSubmit} className="space-y-5">
                         {/* Email Field */}
@@ -290,7 +306,11 @@ export const LoginPage = () => {
                     <p className="mt-8 text-center text-muted-foreground">
                         Don&apos;t have an account?{" "}
                         <Link
-                            to="/register"
+                            to={
+                                redirect !== "/dashboard"
+                                    ? `/register?redirect=${encodeURIComponent(redirect)}`
+                                    : "/register"
+                            }
                             className="text-primary font-medium hover:text-primary/80 transition-colors"
                         >
                             Create a free account
