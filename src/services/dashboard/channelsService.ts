@@ -11,6 +11,7 @@ export type ChannelType =
 export type ChannelStatus = "inactive" | "active" | "error";
 
 export interface Channel {
+    key: string;
     id: string;
     business_id: string;
     type: ChannelType;
