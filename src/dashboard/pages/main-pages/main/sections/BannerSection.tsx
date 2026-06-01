@@ -1,12 +1,17 @@
 import { useDashboardDataStore } from "@/store/dashboard/dashboardDataStore";
-import { motion } from "framer-motion"
-import { Brain, CirclePower } from "lucide-react"
+import { useAuthStore } from "@/store/authStore";
+import { motion } from "framer-motion";
+import { Brain, CirclePower } from "lucide-react";
 
 export const BannerSection = () => {
-
     const { channels: realChannels } = useDashboardDataStore();
+    const { hasModule, hasPermission } = useAuthStore();
 
-    const channels = realChannels;
+    const canViewChannels = hasPermission("channels.view");
+
+    const channels = canViewChannels
+        ? realChannels.filter((channel) => hasModule(channel.key ?? channel.name?.toLowerCase()))
+        : [];
 
     const getChannelStatusIcon = (status: string) => {
         switch (status) {
@@ -65,5 +70,5 @@ export const BannerSection = () => {
                 </div>
             </div>
         </motion.div>
-    )
-}
+    );
+};

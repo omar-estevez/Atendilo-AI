@@ -1,22 +1,33 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useDashboardDataStore } from "@/store/dashboard/dashboardDataStore";
+import { useAuthStore } from "@/store/authStore";
 import { Calendar, Plus } from "lucide-react";
 import { formatBookingDate, formatBookingTime, getBookingStatusClass } from "../helpers/BookingsMainHelpers";
 import { useNavigate } from "react-router";
 
 export const BookingsSection = () => {
-
     const navigate = useNavigate();
 
     const { bookings } = useDashboardDataStore();
+    const hasPermission = useAuthStore((state) => state.hasPermission);
+
+    const canCreateBooking = hasPermission("bookings.create");
+
     return (
         <Card className="border-border/50 overflow-hidden">
             <div className="p-4 border-b border-border/50 flex items-center justify-between">
                 <h3 className="font-semibold">Upcoming Bookings</h3>
-                <Button onClick={() => navigate("/dashboard/bookings")} variant="ghost" size="sm">
-                    <Plus className="w-4 h-4" />
-                </Button>
+
+                {canCreateBooking && (
+                    <Button
+                        onClick={() => navigate("/dashboard/bookings")}
+                        variant="ghost"
+                        size="sm"
+                    >
+                        <Plus className="w-4 h-4" />
+                    </Button>
+                )}
             </div>
 
             <div className="divide-y divide-border/50">
@@ -73,5 +84,5 @@ export const BookingsSection = () => {
                 )}
             </div>
         </Card>
-    )
-}
+    );
+};

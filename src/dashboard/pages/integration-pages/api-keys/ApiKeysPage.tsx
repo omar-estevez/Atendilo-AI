@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useApiKeysStore } from "@/store/dashboard/apiKeysStore";
+import { useAuthStore } from "@/store/authStore";
 import type { ApiKey } from "@/services/dashboard/apiKeysService";
 import NewApiKeyModal from "./new-api-key/NewApiKeyModal";
 import { formatDate, formatTimeAgo, getStatusClass, getStatusIcon } from "./helpers/ApiKeyHelpers";
@@ -30,6 +31,10 @@ export const ApiKeysPage = () => {
 
     const [isNewApiKeyOpen, setIsNewApiKeyOpen] = useState(false);
     const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+    const hasPermission = useAuthStore((state) => state.hasPermission);
+    const canCreateApiKey = hasPermission("api_keys.create");
+    const canDeleteApiKey = hasPermission("api_keys.delete");
 
     useEffect(() => {
         loadApiKeys();
@@ -54,10 +59,14 @@ export const ApiKeysPage = () => {
     };
 
     const handleRevoke = async (apiKey: ApiKey) => {
+        if (!canDeleteApiKey) return;
+
         await revokeApiKey(apiKey);
     };
 
     const handleDelete = async (apiKey: ApiKey) => {
+        if (!canDeleteApiKey) return;
+
         await deleteApiKey(apiKey);
     };
 
@@ -86,19 +95,29 @@ export const ApiKeysPage = () => {
                         Refresh
                     </Button>
 
-                    <Button
-                        className="bg-primary hover:bg-primary/90"
-                        onClick={() => setIsNewApiKeyOpen(true)}
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        New API Key
-                    </Button>
+                    {canCreateApiKey && (
+                        <Button
+                            className="bg-primary hover:bg-primary/90"
+                            onClick={() => setIsNewApiKeyOpen(true)}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            New API Key
+                        </Button>
+                    )}
                 </div>
             </div>
 
             {error && (
                 <Card className="mb-4 border-red-500/30 bg-red-500/10 p-4">
                     <p className="text-sm text-red-400">{error}</p>
+                </Card>
+            )}
+
+            {!canCreateApiKey && !canDeleteApiKey && (
+                <Card className="mb-4 border-border/50 bg-muted/10 p-4">
+                    <p className="text-sm text-muted-foreground">
+                        View-only access. Only the business owner can create, revoke or delete API keys.
+                    </p>
                 </Card>
             )}
 
@@ -236,28 +255,30 @@ export const ApiKeysPage = () => {
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-wrap gap-2">
-                                        {apiKey.status === "active" && (
+                                    {canDeleteApiKey && (
+                                        <div className="flex flex-wrap gap-2">
+                                            {apiKey.status === "active" && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        handleRevoke(apiKey)
+                                                    }
+                                                >
+                                                    Revoke
+                                                </Button>
+                                            )}
+
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() =>
-                                                    handleRevoke(apiKey)
-                                                }
+                                                onClick={() => handleDelete(apiKey)}
                                             >
-                                                Revoke
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Delete
                                             </Button>
-                                        )}
-
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => handleDelete(apiKey)}
-                                        >
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Delete
-                                        </Button>
-                                    </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))
                         ) : (
@@ -324,7 +345,7 @@ export const ApiKeysPage = () => {
                 </div>
             </div>
 
-            {isNewApiKeyOpen && (
+            {canCreateApiKey && isNewApiKeyOpen && (
                 <NewApiKeyModal
                     open={isNewApiKeyOpen}
                     onClose={() => setIsNewApiKeyOpen(false)}

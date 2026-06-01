@@ -17,6 +17,7 @@ import { getInitials, getRoleClass, getRoleIcon } from "./helpers/TeamHelpers";
 import { useTeamInvitationsStore } from "@/store/dashboard/teamInvitationsStore";
 import { getInviteUrl } from "@/services/dashboard/teamInvitationsService";
 import InviteMemberModal from "./invite-member/InviteMemberModal";
+import { useAuthStore } from "@/store/authStore";
 
 const roleDescription: Record<UserRole, string> = {
     owner: "Full access to billing, team, integrations, and business settings.",
@@ -46,6 +47,11 @@ export const TeamPage = () => {
         deleteInvitation,
         clearNewlyCreatedInvitation,
     } = useTeamInvitationsStore();
+
+    const { hasPermission } = useAuthStore();
+
+    const canInvite = hasPermission("team.invite");
+    const canChangeRole = hasPermission("team.change_role");
 
     const [isUpdatingRole, setIsUpdatingRole] = useState(false);
     const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -112,10 +118,12 @@ export const TeamPage = () => {
                         Refresh
                     </Button>
 
-                    <Button className="bg-primary hover:bg-primary/90" onClick={() => setIsInviteOpen(true)}>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Invite Member
-                    </Button>
+                    {canInvite && (
+                        <Button className="bg-primary hover:bg-primary/90" onClick={() => setIsInviteOpen(true)}>
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Invite Member
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -488,25 +496,31 @@ export const TeamPage = () => {
                                         Change Role
                                     </h3>
 
-                                    <select
-                                        value={selectedMember.role}
-                                        disabled={
-                                            selectedMember.role === "owner" ||
-                                            isUpdatingRole
-                                        }
-                                        onChange={(event) =>
-                                            handleRoleChange(
-                                                selectedMember,
-                                                event.target.value as UserRole
-                                            )
-                                        }
-                                        className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
-                                        <option value="owner">Owner</option>
-                                        <option value="admin">Admin</option>
-                                        <option value="agent">Agent</option>
-                                        <option value="viewer">Viewer</option>
-                                    </select>
+                                    {canChangeRole ? (
+                                        <select
+                                            value={selectedMember.role}
+                                            disabled={
+                                                selectedMember.role === "owner" ||
+                                                isUpdatingRole
+                                            }
+                                            onChange={(event) =>
+                                                handleRoleChange(
+                                                    selectedMember,
+                                                    event.target.value as UserRole
+                                                )
+                                            }
+                                            className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <option value="owner">Owner</option>
+                                            <option value="admin">Admin</option>
+                                            <option value="agent">Agent</option>
+                                            <option value="viewer">Viewer</option>
+                                        </select>
+                                    ) : (
+                                        <span className="text-muted-foreground">
+                                            {selectedMember.role}
+                                        </span>
+                                    )}
 
                                     {selectedMember.role === "owner" && (
                                         <p className="mt-2 text-xs text-muted-foreground">

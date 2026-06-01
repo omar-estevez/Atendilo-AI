@@ -6,14 +6,11 @@ import {
     Circle,
     Clock,
     Inbox,
-    Mail,
-    MessageCircle,
     MessageSquare,
     RefreshCw,
     Search,
     Send,
     SlidersHorizontal,
-    Smartphone,
     User,
 } from "lucide-react";
 
@@ -23,85 +20,8 @@ import { useDashboardDataStore } from "@/store/dashboard/dashboardDataStore";
 import type { ConversationStatus } from "@/services/dashboard/conversationsService";
 import ConversationFiltersPanel, { defaultConversationAdvancedFilters, type ConversationAdvancedFilters } from "./filter-panel/ConversationFiltersPanel";
 import { useSearchParams } from "react-router";
-
-const getInitials = (name?: string | null) => {
-    if (!name) return "NA";
-
-    return name
-        .split(" ")
-        .map((word) => word[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase();
-};
-
-const formatDate = (date?: string | null) => {
-    if (!date) return "No activity";
-
-    return new Intl.DateTimeFormat("en-US", {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-    }).format(new Date(date));
-};
-
-const formatLabel = (value?: string | null) => {
-    if (!value) return "Unknown";
-
-    return value
-        .replace(/_/g, " ")
-        .replace(/\b\w/g, (char) => char.toUpperCase());
-};
-
-const getChannelIcon = (type?: string | null) => {
-    switch (type) {
-        case "whatsapp":
-            return <MessageCircle className="h-4 w-4 text-emerald-400" />;
-        case "sms":
-            return <Smartphone className="h-4 w-4 text-blue-400" />;
-        case "email":
-            return <Mail className="h-4 w-4 text-primary" />;
-        case "webchat":
-            return <MessageSquare className="h-4 w-4 text-cyan-400" />;
-        default:
-            return <Inbox className="h-4 w-4 text-muted-foreground" />;
-    }
-};
-
-const getStatusClass = (status?: string | null) => {
-    switch (status) {
-        case "open":
-            return "border-emerald-500/25 bg-emerald-500/15 text-emerald-400";
-        case "pending":
-            return "border-amber-500/25 bg-amber-500/15 text-amber-400";
-        case "closed":
-            return "border-muted bg-secondary text-muted-foreground";
-        default:
-            return "border-border bg-secondary text-muted-foreground";
-    }
-};
-
-const getUrgencyClass = (urgency?: string | null) => {
-    switch (urgency) {
-        case "high":
-            return "border-red-500/25 bg-red-500/15 text-red-400";
-        case "medium":
-            return "border-amber-500/25 bg-amber-500/15 text-amber-400";
-        case "low":
-            return "border-blue-500/25 bg-blue-500/15 text-blue-400";
-        default:
-            return "border-border bg-secondary text-muted-foreground";
-    }
-};
-
-const getScoreClass = (score?: number | null) => {
-    if (!score) return "border-border bg-secondary text-muted-foreground";
-    if (score >= 80) return "border-emerald-500/25 bg-emerald-500/15 text-emerald-400";
-    if (score >= 60) return "border-blue-500/25 bg-blue-500/15 text-blue-400";
-    if (score >= 40) return "border-amber-500/25 bg-amber-500/15 text-amber-400";
-    return "border-red-500/25 bg-red-500/15 text-red-400";
-};
+import { getInitials, getChannelIcon, formatDate, getStatusClass, getUrgencyClass, formatLabel, getScoreClass } from "./helpers/ConverstionHelpers";
+import { useAuthStore } from "@/store/authStore";
 
 export const ConversationPage = () => {
 
@@ -121,6 +41,8 @@ export const ConversationPage = () => {
         updateSelectedConversationStatus,
     } = useDashboardDataStore();
 
+    const { hasPermission } = useAuthStore();
+
     const [searchTerm, setSearchTerm] = useState("");
     const [messageInput, setMessageInput] = useState("");
     const [isSending, setIsSending] = useState(false);
@@ -130,6 +52,9 @@ export const ConversationPage = () => {
         useState<ConversationAdvancedFilters>(
             defaultConversationAdvancedFilters
         )
+
+    const canReply = hasPermission("conversations.reply");
+    const canUpdateStatus = hasPermission("conversations.assign");
 
     useEffect(() => {
         loadConversations();
@@ -229,6 +154,7 @@ export const ConversationPage = () => {
     };
 
     const handleSendMessage = async () => {
+        if (!canReply) return;
         if (!messageInput.trim()) return;
 
         try {
@@ -241,6 +167,8 @@ export const ConversationPage = () => {
     };
 
     const handleStatusChange = async (status: ConversationStatus) => {
+        if (!canUpdateStatus) return;
+
         await updateSelectedConversationStatus(status);
     };
 
@@ -502,6 +430,7 @@ export const ConversationPage = () => {
                                             onClick={() =>
                                                 handleStatusChange("open")
                                             }
+                                            disabled={!canUpdateStatus}
                                         >
                                             <Circle className="mr-2 h-4 w-4 text-emerald-400" />
                                             Open
@@ -513,6 +442,7 @@ export const ConversationPage = () => {
                                             onClick={() =>
                                                 handleStatusChange("pending")
                                             }
+                                            disabled={!canUpdateStatus}
                                         >
                                             <Clock className="mr-2 h-4 w-4 text-amber-400" />
                                             Pending
@@ -524,6 +454,7 @@ export const ConversationPage = () => {
                                             onClick={() =>
                                                 handleStatusChange("closed")
                                             }
+                                            disabled={!canUpdateStatus}
                                         >
                                             <CheckCircle2 className="mr-2 h-4 w-4 text-muted-foreground" />
                                             Close
@@ -685,15 +616,17 @@ export const ConversationPage = () => {
                                                 handleSendMessage();
                                             }
                                         }}
-                                        placeholder="Write a reply..."
+                                        placeholder={
+                                            canReply
+                                                ? "Write a reply..."
+                                                : "View-only access. You cannot reply."
+                                        }
                                         className="min-h-[44px] flex-1 resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
                                     />
 
                                     <Button
                                         onClick={handleSendMessage}
-                                        disabled={
-                                            isSending || !messageInput.trim()
-                                        }
+                                        disabled={!canReply || isSending || !messageInput.trim()}
                                         className="h-auto px-5"
                                     >
                                         <Send className="mr-2 h-4 w-4" />

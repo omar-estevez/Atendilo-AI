@@ -21,6 +21,7 @@ import type {
     NotificationCategory,
     NotificationChannel,
 } from "@/services/dashboard/notificationService";
+import { useAuthStore } from "@/store/authStore";
 
 const categoryFilters: { label: string; value: "all" | NotificationCategory }[] =
     [
@@ -46,10 +47,14 @@ export const NotificationPage = () => {
         disableAllForChannel,
     } = useNotificationStore();
 
+    const { hasPermission } = useAuthStore();
+
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] =
         useState<"all" | NotificationCategory>("all");
     const [savedMessage, setSavedMessage] = useState("");
+
+    const canEditNotifications = hasPermission("notifications.edit");
 
     useEffect(() => {
         loadNotifications();
@@ -100,6 +105,7 @@ export const NotificationPage = () => {
             onClick={onClick}
             aria-label={label}
             className="mx-auto"
+            disabled={!canEditNotifications}
         >
             {enabled ? (
                 <ToggleRight className="h-7 w-7 text-primary" />
@@ -125,6 +131,7 @@ export const NotificationPage = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => enableAllForChannel(channel)}
+                    disabled={!canEditNotifications}
                 >
                     Enable all
                 </Button>
@@ -133,6 +140,7 @@ export const NotificationPage = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => disableAllForChannel(channel)}
+                    disabled={!canEditNotifications}
                 >
                     Disable all
                 </Button>
@@ -171,14 +179,16 @@ export const NotificationPage = () => {
                         Refresh
                     </Button>
 
-                    <Button
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className="bg-primary hover:bg-primary/90"
-                    >
-                        <Save className="mr-2 h-4 w-4" />
-                        {isSaving ? "Saving..." : "Save Changes"}
-                    </Button>
+                    {canEditNotifications && (
+                        <Button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="bg-primary hover:bg-primary/90"
+                        >
+                            <Save className="mr-2 h-4 w-4" />
+                            {isSaving ? "Saving..." : "Save Changes"}
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -416,6 +426,24 @@ export const NotificationPage = () => {
                     </div>
                 </div>
             </Card>
+
+            {!canEditNotifications && (
+                <Card className="border-chart-4/20 bg-chart-4/10 p-5">
+                    <div className="flex items-start gap-3">
+                        <Bell className="mt-0.5 h-5 w-5 text-chart-4" />
+
+                        <div>
+                            <p className="font-medium text-chart-4">
+                                Modifications
+                            </p>
+
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                View-only access. Only owners and admins can update workspace notifications.
+                            </p>
+                        </div>
+                    </div>
+                </Card>
+            )}
         </div>
     );
 };

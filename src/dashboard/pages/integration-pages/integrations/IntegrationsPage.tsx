@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useIntegrationsStore } from "@/store/dashboard/integrationsStore";
+import { useAuthStore } from "@/store/authStore";
 import type {
     Integration,
 } from "@/services/dashboard/integrationsService";
@@ -35,6 +36,9 @@ export const IntegrationsPage = () => {
 
     const [isNewIntegrationOpen, setIsNewIntegrationOpen] = useState(false);
 
+    const hasPermission = useAuthStore((state) => state.hasPermission);
+    const canManageIntegrations = hasPermission("integrations.manage");
+
     useEffect(() => {
         loadIntegrations();
     }, [loadIntegrations]);
@@ -53,7 +57,27 @@ export const IntegrationsPage = () => {
         };
     }, [integrations]);
 
+    const handleConnect = async (integration: Integration) => {
+        if (!canManageIntegrations) return;
+
+        await connectIntegration(integration);
+    };
+
+    const handleDisconnect = async (integration: Integration) => {
+        if (!canManageIntegrations) return;
+
+        await disconnectIntegration(integration);
+    };
+
+    const handleSync = async (integration: Integration) => {
+        if (!canManageIntegrations) return;
+
+        await syncIntegration(integration);
+    };
+
     const handleDelete = async (integration: Integration) => {
+        if (!canManageIntegrations) return;
+
         await deleteIntegration(integration);
     };
 
@@ -82,15 +106,25 @@ export const IntegrationsPage = () => {
                         Refresh
                     </Button>
 
-                    <Button
-                        className="bg-primary hover:bg-primary/90"
-                        onClick={() => setIsNewIntegrationOpen(true)}
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        New Integration
-                    </Button>
+                    {canManageIntegrations && (
+                        <Button
+                            className="bg-primary hover:bg-primary/90"
+                            onClick={() => setIsNewIntegrationOpen(true)}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            New Integration
+                        </Button>
+                    )}
                 </div>
             </div>
+
+            {!canManageIntegrations && (
+                <Card className="mb-4 border-border/50 bg-muted/10 p-4">
+                    <p className="text-sm text-muted-foreground">
+                        View-only access. Only owners and admins can connect, sync or delete integrations.
+                    </p>
+                </Card>
+            )}
 
             {error && (
                 <Card className="mb-4 border-red-500/30 bg-red-500/10 p-4">
@@ -337,56 +371,58 @@ export const IntegrationsPage = () => {
                                     </p>
                                 </div>
 
-                                <div className="flex flex-wrap gap-3">
-                                    {selectedIntegration.status !==
-                                        "connected" && (
-                                            <Button
-                                                onClick={() =>
-                                                    connectIntegration(
-                                                        selectedIntegration
-                                                    )
-                                                }
-                                            >
-                                                <Link2 className="mr-2 h-4 w-4" />
-                                                Connect
-                                            </Button>
-                                        )}
+                                {canManageIntegrations && (
+                                    <div className="flex flex-wrap gap-3">
+                                        {selectedIntegration.status !==
+                                            "connected" && (
+                                                <Button
+                                                    onClick={() =>
+                                                        handleConnect(
+                                                            selectedIntegration
+                                                        )
+                                                    }
+                                                >
+                                                    <Link2 className="mr-2 h-4 w-4" />
+                                                    Connect
+                                                </Button>
+                                            )}
 
-                                    {selectedIntegration.status ===
-                                        "connected" && (
-                                            <Button
-                                                variant="outline"
-                                                onClick={() =>
-                                                    disconnectIntegration(
-                                                        selectedIntegration
-                                                    )
-                                                }
-                                            >
-                                                <Unplug className="mr-2 h-4 w-4" />
-                                                Disconnect
-                                            </Button>
-                                        )}
+                                        {selectedIntegration.status ===
+                                            "connected" && (
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() =>
+                                                        handleDisconnect(
+                                                            selectedIntegration
+                                                        )
+                                                    }
+                                                >
+                                                    <Unplug className="mr-2 h-4 w-4" />
+                                                    Disconnect
+                                                </Button>
+                                            )}
 
-                                    <Button
-                                        variant="outline"
-                                        onClick={() =>
-                                            syncIntegration(selectedIntegration)
-                                        }
-                                    >
-                                        <RefreshCw className="mr-2 h-4 w-4" />
-                                        Sync
-                                    </Button>
+                                        <Button
+                                            variant="outline"
+                                            onClick={() =>
+                                                handleSync(selectedIntegration)
+                                            }
+                                        >
+                                            <RefreshCw className="mr-2 h-4 w-4" />
+                                            Sync
+                                        </Button>
 
-                                    <Button
-                                        variant="outline"
-                                        onClick={() =>
-                                            handleDelete(selectedIntegration)
-                                        }
-                                    >
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete
-                                    </Button>
-                                </div>
+                                        <Button
+                                            variant="outline"
+                                            onClick={() =>
+                                                handleDelete(selectedIntegration)
+                                            }
+                                        >
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Delete
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (
@@ -407,7 +443,7 @@ export const IntegrationsPage = () => {
                 </Card>
             </div>
 
-            {isNewIntegrationOpen && (
+            {canManageIntegrations && isNewIntegrationOpen && (
                 <NewIntegrationModal
                     open={isNewIntegrationOpen}
                     onClose={() => setIsNewIntegrationOpen(false)}

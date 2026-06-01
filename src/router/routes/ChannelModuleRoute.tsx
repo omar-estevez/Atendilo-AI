@@ -7,7 +7,12 @@ const allowedChannels = ["whatsapp", "sms", "webchat", "email"];
 export const ChannelModuleRoute = () => {
     const { channel } = useParams();
 
-    const { hasModule, isInitialized, isAuthenticated } = useAuthStore()
+    const {
+        hasModule,
+        hasPermission,
+        isInitialized,
+        isAuthenticated,
+    } = useAuthStore();
 
     if (!isInitialized) {
         return (
@@ -26,7 +31,10 @@ export const ChannelModuleRoute = () => {
         return <Navigate to="/dashboard" replace />;
     }
 
-    if (!hasModule(channel)) {
+    const hasChannelModule = hasModule(channel);
+    const canViewChannels = hasPermission("channels.view");
+
+    if (!hasChannelModule || !canViewChannels) {
         return <Navigate to="/dashboard" replace />;
     }
 

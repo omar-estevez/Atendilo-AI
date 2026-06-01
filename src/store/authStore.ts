@@ -13,6 +13,7 @@ import {
     type BusinessModule,
 } from "../services/modulesService";
 import { supabase } from "@/lib/supabase";
+import { ROLE_PERMISSIONS, type UserRole } from "@/dashboard/config/rolePermissions";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -45,8 +46,10 @@ interface AuthStore {
     loadUserData: () => Promise<void>;
     refreshModules: () => Promise<void>;
     hasModule: (moduleKey: string) => boolean;
+    hasPermission: (permissionKey: string) => boolean;
     clearError: () => void;
     updateBusiness: (payload: UpdateBusinessPayload) => Promise<void>;
+    updateProfile: (payload: { fullName: string; avatarFile?: File | null; }) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
@@ -240,6 +243,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             });
 
             if (error) {
+                console.error("Signup error:", error);
                 throw new Error(error.message);
             }
 
@@ -258,9 +262,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
              * The accept-invite flow will assign business_id and role.
              */
             if (businessName) {
+                console.log('entraa')
+
                 set({
                     loadingStep: "Setting up your business workspace...",
                 });
+
+                const businessId = crypto.randomUUID();
 
                 const slug = businessName
                     .toLowerCase()
@@ -268,19 +276,19 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
                     .replace(/[^a-z0-9]+/g, "-")
                     .replace(/^-+|-+$/g, "");
 
-                const { data: businessData, error: businessError } =
+                const { error: businessError } =
                     await supabase
                         .from("businesses")
                         .insert({
+                            id: businessId,
                             name: businessName,
                             slug: `${slug}-${Date.now()}`,
                             industry: null,
                             settings: {},
                         })
-                        .select()
-                        .single();
 
                 if (businessError) {
+                    console.error("BUSINESS INSERT ERROR:", businessError);
                     throw new Error(businessError.message);
                 }
 
@@ -288,14 +296,41 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
                     .from("profiles")
                     .insert({
                         id: user.id,
-                        business_id: businessData.id,
+                        business_id: businessId,
                         full_name: fullName,
                         email,
                         role: "owner",
                     });
 
                 if (profileError) {
+                    console.error("PROFILE INSERT ERROR:", profileError);
                     throw new Error(profileError.message);
+                }
+
+                const { data: noPlan, error: planError } = await supabase
+                    .from("plans")
+                    .select("id")
+                    .eq("name", "No Plan")
+                    .single();
+
+                if (planError || !noPlan) {
+                    console.error("NO PLAN ERROR:", planError);
+                    throw new Error("No Plan not found");
+                }
+
+                const { error: subscriptionError } = await supabase
+                    .from("subscriptions")
+                    .insert({
+                        business_id: businessId,
+                        plan_id: noPlan.id,
+                        status: "active",
+                        started_at: new Date().toISOString(),
+                        ends_at: null,
+                    });
+
+                if (subscriptionError) {
+                    console.error("SUBSCRIPTION INSERT ERROR:", subscriptionError);
+                    throw new Error(subscriptionError.message);
                 }
             }
 
@@ -409,6 +444,16 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         );
     },
 
+    hasPermission: (permissionKey: string) => {
+        const profile = get().profile;
+
+        if (!profile?.role) return false;
+
+        const role = profile.role as UserRole;
+
+        return ROLE_PERMISSIONS[role]?.includes(permissionKey) ?? false;
+    },
+
     clearError: () => {
         set({ error: null });
     },
@@ -443,6 +488,56 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
                     error instanceof Error
                         ? error.message
                         : "Failed to update business",
+                isLoading: false,
+                loadingStep: null,
+            });
+
+            throw error;
+        }
+    },
+
+    updateProfile: async ({ fullName, avatarFile }) => {
+        try {
+            const currentProfile = get().profile;
+
+            if (!currentProfile) {
+                throw new Error("No profile found");
+            }
+
+            set({
+                isLoading: true,
+                error: null,
+                loadingStep: "Updating profile...",
+            });
+
+            let avatarUrl = currentProfile.avatar_url;
+
+            if (avatarFile) {
+                avatarUrl = await businessService.uploadProfileAvatar(
+                    currentProfile.id,
+                    avatarFile
+                );
+            }
+
+            const updatedProfile = await businessService.updateProfile(
+                currentProfile.id,
+                {
+                    full_name: fullName,
+                    avatar_url: avatarUrl,
+                }
+            );
+
+            set({
+                profile: updatedProfile,
+                isLoading: false,
+                loadingStep: null,
+            });
+        } catch (error) {
+            set({
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to update profile",
                 isLoading: false,
                 loadingStep: null,
             });

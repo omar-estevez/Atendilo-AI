@@ -17,6 +17,7 @@ import { Card } from "@/components/ui/card";
 
 import { useDashboardDataStore } from "@/store/dashboard/dashboardDataStore";
 import { useBillingStore } from "@/store/dashboard/billingStore";
+import { useAuthStore } from "@/store/authStore";
 
 import { ConversationSection } from "./sections/ConversationSection";
 import { AiActivitySection } from "./sections/AiActivitySection";
@@ -41,15 +42,38 @@ export const MainPage = () => {
         isLoading: isBillingLoading,
     } = useBillingStore();
 
+    const { hasModule, hasPermission } = useAuthStore();
+
+    const canViewConversations =
+        hasModule("conversations") && hasPermission("conversations.view");
+
+    const canViewAiActivity =
+        hasModule("ai_activity") && hasPermission("ai_activity.view");
+
+    const canViewBookings =
+        hasModule("bookings") && hasPermission("bookings.view");
+
+    const canViewAiFlows =
+        hasModule("ai_flows") && hasPermission("ai_flows.view");
+
+    const canViewBilling =
+        hasModule("billing") && hasPermission("billing.view");
+
     useEffect(() => {
         loadDashboardData();
-        loadBilling();
-    }, [loadDashboardData, loadBilling]);
+
+        if (canViewBilling) {
+            loadBilling();
+        }
+    }, [loadDashboardData, loadBilling, canViewBilling]);
 
     useEffect(() => {
         const refresh = () => {
             loadDashboardData();
-            loadBilling();
+
+            if (canViewBilling) {
+                loadBilling();
+            }
         };
 
         window.addEventListener("lumora:refresh", refresh);
@@ -57,7 +81,7 @@ export const MainPage = () => {
         return () => {
             window.removeEventListener("lumora:refresh", refresh);
         };
-    }, [loadDashboardData, loadBilling]);
+    }, [loadDashboardData, loadBilling, canViewBilling]);
 
     const kpiCards = [
         {
@@ -164,95 +188,101 @@ export const MainPage = () => {
                 })}
             </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <AiActivitySection />
-                <ConversationSection />
-            </div>
-
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <BookingsSection />
-                <AiFlowsSection />
-            </div>
-
-            <Card className="overflow-hidden border-border/50 bg-card/60">
-                <div className="flex flex-col gap-3 border-b border-border/50 bg-background/30 p-5 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h3 className="font-semibold">
-                            {subscription?.plans?.name || "Current"} Plan Usage
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                            Current monthly usage across your plan limits.
-                        </p>
-                    </div>
-
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate("/dashboard/billing")}
-                    >
-                        <Crown className="mr-2 h-4 w-4" />
-                        Manage Plan
-                    </Button>
+            {(canViewAiActivity || canViewConversations) && (
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    {canViewAiActivity && <AiActivitySection />}
+                    {canViewConversations && <ConversationSection />}
                 </div>
+            )}
 
-                <div className="grid grid-cols-1 gap-5 p-5 md:grid-cols-3 xl:grid-cols-6">
-                    {isBillingLoading ? (
-                        <div className="col-span-full text-sm text-muted-foreground">
-                            Loading usage...
-                        </div>
-                    ) : usageMetrics.length > 0 ? (
-                        usageMetrics.map((metric) => {
-                            const percentage = getUsagePercentage(
-                                metric.used,
-                                metric.limit
-                            );
+            {(canViewBookings || canViewAiFlows) && (
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    {canViewBookings && <BookingsSection />}
+                    {canViewAiFlows && <AiFlowsSection />}
+                </div>
+            )}
 
-                            return (
-                                <div key={metric.id} className="space-y-2">
-                                    <p className="text-sm text-muted-foreground">
-                                        {metric.label}
-                                    </p>
-
-                                    <div className="flex items-end justify-between gap-2">
-                                        <p className="font-bold">
-                                            {metric.used.toLocaleString()}
-                                            {metric.unit ? ` ${metric.unit}` : ""}
-                                        </p>
-
-                                        <p className="text-xs text-muted-foreground">
-                                            / {metric.limit.toLocaleString()}
-                                            {metric.unit ? ` ${metric.unit}` : ""}
-                                        </p>
-                                    </div>
-
-                                    <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                                        <div
-                                            className={`h-full rounded-full ${getUsageColor(
-                                                percentage
-                                            )}`}
-                                            style={{
-                                                width: `${percentage}%`,
-                                            }}
-                                        />
-                                    </div>
-
-                                    <p className="text-xs text-muted-foreground">
-                                        {Math.round(percentage)}% used
-                                    </p>
-                                </div>
-                            );
-                        })
-                    ) : (
-                        <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 p-8 text-center">
-                            <RotateCcw className="mb-3 h-8 w-8 text-muted-foreground" />
-                            <p className="font-medium">No usage data available</p>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                                Usage will appear here after billing data loads.
+            {canViewBilling && (
+                <Card className="overflow-hidden border-border/50 bg-card/60">
+                    <div className="flex flex-col gap-3 border-b border-border/50 bg-background/30 p-5 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h3 className="font-semibold">
+                                {subscription?.plans?.name || "Current"} Plan Usage
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                                Current monthly usage across your plan limits.
                             </p>
                         </div>
-                    )}
-                </div>
-            </Card>
+
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate("/dashboard/billing")}
+                        >
+                            <Crown className="mr-2 h-4 w-4" />
+                            Manage Plan
+                        </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-5 p-5 md:grid-cols-3 xl:grid-cols-6">
+                        {isBillingLoading ? (
+                            <div className="col-span-full text-sm text-muted-foreground">
+                                Loading usage...
+                            </div>
+                        ) : usageMetrics.length > 0 ? (
+                            usageMetrics.map((metric) => {
+                                const percentage = getUsagePercentage(
+                                    metric.used,
+                                    metric.limit
+                                );
+
+                                return (
+                                    <div key={metric.id} className="space-y-2">
+                                        <p className="text-sm text-muted-foreground">
+                                            {metric.label}
+                                        </p>
+
+                                        <div className="flex items-end justify-between gap-2">
+                                            <p className="font-bold">
+                                                {metric.used.toLocaleString()}
+                                                {metric.unit ? ` ${metric.unit}` : ""}
+                                            </p>
+
+                                            <p className="text-xs text-muted-foreground">
+                                                / {metric.limit.toLocaleString()}
+                                                {metric.unit ? ` ${metric.unit}` : ""}
+                                            </p>
+                                        </div>
+
+                                        <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                                            <div
+                                                className={`h-full rounded-full ${getUsageColor(
+                                                    percentage
+                                                )}`}
+                                                style={{
+                                                    width: `${percentage}%`,
+                                                }}
+                                            />
+                                        </div>
+
+                                        <p className="text-xs text-muted-foreground">
+                                            {Math.round(percentage)}% used
+                                        </p>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 p-8 text-center">
+                                <RotateCcw className="mb-3 h-8 w-8 text-muted-foreground" />
+                                <p className="font-medium">No usage data available</p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    Usage will appear here after billing data loads.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </Card>
+            )}
         </div>
     );
 };

@@ -1,14 +1,17 @@
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { useDashboardDataStore } from "@/store/dashboard/dashboardDataStore";
-import { Workflow, Plus, GitBranch } from "lucide-react"
+import { useAuthStore } from "@/store/authStore";
+import { Workflow, Plus, GitBranch } from "lucide-react";
 import { useNavigate } from "react-router";
 
 export const AiFlowsSection = () => {
-
     const navigate = useNavigate();
 
     const { aiFlows } = useDashboardDataStore();
+    const hasPermission = useAuthStore((state) => state.hasPermission);
+
+    const canCreateFlow = hasPermission("ai_flows.create");
 
     return (
         <Card className="lg:col-span-2 border-border/50 overflow-hidden">
@@ -18,10 +21,16 @@ export const AiFlowsSection = () => {
                     <h3 className="font-semibold">Active AI Flows</h3>
                 </div>
 
-                <Button onClick={() => navigate("/dashboard/flows")} size="sm" className="bg-primary hover:bg-primary/90">
-                    <Plus className="w-4 h-4 mr-2" />
-                    New Flow
-                </Button>
+                {canCreateFlow && (
+                    <Button
+                        onClick={() => navigate("/dashboard/flows")}
+                        size="sm"
+                        className="bg-primary hover:bg-primary/90"
+                    >
+                        <Plus className="w-4 h-4 mr-2" />
+                        New Flow
+                    </Button>
+                )}
             </div>
 
             <div className="divide-y divide-border/50">
@@ -67,5 +76,5 @@ export const AiFlowsSection = () => {
                 )}
             </div>
         </Card>
-    )
-}
+    );
+};

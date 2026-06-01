@@ -36,8 +36,8 @@ import {
 } from "./routes/lazy-pages";
 
 import { ProtectedRoute } from "./routes/ProtectedRoute";
-import { ModuleRoute } from "./routes/ModuleRoute";
 import { ChannelModuleRoute } from "./routes/ChannelModuleRoute";
+import { AccessRoute } from "./routes/AccessRoute";
 
 export const appRouter = createBrowserRouter([
     {
@@ -101,7 +101,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="conversations" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="conversations"
+                                permissionKey="conversations.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "conversations",
@@ -111,7 +116,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="voice_ai" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="voice_ai"
+                                permissionKey="voice_ai.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "voice",
@@ -121,7 +131,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="bookings" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="bookings"
+                                permissionKey="bookings.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "bookings",
@@ -131,7 +146,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="leads" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="leads"
+                                permissionKey="leads.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "leads",
@@ -141,7 +161,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="analytics" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="analytics"
+                                permissionKey="analytics.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "analytics",
@@ -151,7 +176,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="ai_activity" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="ai_activity"
+                                permissionKey="ai_activity.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "ai-activity",
@@ -161,7 +191,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="ai_flows" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="ai_flows"
+                                permissionKey="ai_flows.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "flows",
@@ -171,7 +206,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="templates" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="templates"
+                                permissionKey="templates.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "templates",
@@ -191,7 +231,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="webhooks" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="webhooks"
+                                permissionKey="webhooks.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "webhooks",
@@ -201,7 +246,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="integrations" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="integrations"
+                                permissionKey="integrations.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "integrations",
@@ -211,7 +261,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="api_keys" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="api_keys"
+                                permissionKey="api_keys.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "api",
@@ -221,7 +276,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="business" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="business"
+                                permissionKey="business.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "business",
@@ -231,7 +291,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="team" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="team"
+                                permissionKey="team.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "team",
@@ -241,7 +306,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="billing" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="billing"
+                                permissionKey="billing.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "billing",
@@ -251,7 +321,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="security" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="security"
+                                permissionKey="security.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "security",
@@ -261,7 +336,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="notifications" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="notifications"
+                                permissionKey="notifications.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "notifications",
@@ -271,7 +351,12 @@ export const appRouter = createBrowserRouter([
                     },
 
                     {
-                        element: <ModuleRoute moduleKey="business" />,
+                        element: (
+                            <AccessRoute
+                                moduleKey="business"
+                                permissionKey="business.view"
+                            />
+                        ),
                         children: [
                             {
                                 path: "appearance",

@@ -85,7 +85,7 @@ export const BillingPage = () => {
         changePlan,
     } = useBillingStore();
 
-    const initializeAuth = useAuthStore((state) => state.initializeAuth);
+    const { hasPermission, initializeAuth } = useAuthStore();
 
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState("");
@@ -93,6 +93,8 @@ export const BillingPage = () => {
     useEffect(() => {
         loadBilling();
     }, [loadBilling]);
+
+    const canManageBilling = hasPermission("billing.manage");
 
     const currentPlan = subscription?.plans || null;
 
@@ -384,30 +386,32 @@ export const BillingPage = () => {
                                     </p>
                                 </div>
 
-                                <Button
-                                    variant={isCurrent ? "outline" : "default"}
-                                    disabled={
-                                        isCurrent ||
-                                        isChangingPlan ||
-                                        !subscription
-                                    }
-                                    onClick={() => handleChangePlan(plan)}
-                                    className={
-                                        isCurrent
-                                            ? "w-full"
-                                            : "w-full bg-primary hover:bg-primary/90"
-                                    }
-                                >
-                                    {selectedPlanId === plan.id
-                                        ? "Changing..."
-                                        : isCurrent
-                                            ? "Current Plan"
-                                            : isUpgrade
-                                                ? "Upgrade"
-                                                : isDowngrade
-                                                    ? "Downgrade"
-                                                    : "Select Plan"}
-                                </Button>
+                                {canManageBilling && (
+                                    <Button
+                                        variant={isCurrent ? "outline" : "default"}
+                                        disabled={
+                                            isCurrent ||
+                                            isChangingPlan ||
+                                            !subscription
+                                        }
+                                        onClick={() => handleChangePlan(plan)}
+                                        className={
+                                            isCurrent
+                                                ? "w-full"
+                                                : "w-full bg-primary hover:bg-primary/90"
+                                        }
+                                    >
+                                        {selectedPlanId === plan.id
+                                            ? "Changing..."
+                                            : isCurrent
+                                                ? "Current Plan"
+                                                : isUpgrade
+                                                    ? "Upgrade"
+                                                    : isDowngrade
+                                                        ? "Downgrade"
+                                                        : "Select Plan"}
+                                    </Button>
+                                )}
                             </div>
                         );
                     })}

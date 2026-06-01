@@ -169,6 +169,27 @@ export const businessService = {
         return data as Profile;
     },
 
+    async uploadProfileAvatar(profileId: string, file: File) {
+        const fileExt = file.name.split(".").pop();
+        const filePath = `${profileId}/avatar-${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from("avatars")
+            .upload(filePath, file, {
+                upsert: true,
+            });
+
+        if (uploadError) {
+            throw new Error(uploadError.message);
+        }
+
+        const { data } = supabase.storage
+            .from("avatars")
+            .getPublicUrl(filePath);
+
+        return data.publicUrl;
+    },
+
     async getTeamMembers() {
         const { data, error } = await supabase
             .from("profiles")
@@ -188,10 +209,14 @@ export const businessService = {
             .update({ role })
             .eq("id", profileId)
             .select()
-            .single();
+            .maybeSingle();
 
         if (error) {
             throw new Error(error.message);
+        }
+
+        if (!data) {
+            throw new Error("No se encontró el perfil o no tienes permisos para actualizarlo");
         }
 
         return data as Profile;

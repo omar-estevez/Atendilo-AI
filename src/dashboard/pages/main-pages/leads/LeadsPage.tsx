@@ -17,8 +17,7 @@ import { useLeadsStore } from "@/store/dashboard/leadStore";
 import { useNavigate } from "react-router";
 import { getInitials, formatLabel, formatDate, getLeadStatusClass, getLeadIcon, getScoreClass } from "./helpers/LeadsHelpers";
 import NewBookingModal from "../bookings/new-booking/NewBookingModal";
-
-
+import { useAuthStore } from "@/store/authStore";
 
 export const LeadsPage = () => {
     const navigate = useNavigate();
@@ -31,6 +30,12 @@ export const LeadsPage = () => {
         loadLeads,
         selectLead,
     } = useLeadsStore();
+
+    const { hasPermission } = useAuthStore();
+
+    const canEditLead = hasPermission("leads.edit");
+    const canOpenConversation = hasPermission("conversations.view");
+    const canCreateBooking = hasPermission("bookings.create");
 
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
@@ -377,17 +382,19 @@ export const LeadsPage = () => {
                                                 `/dashboard/conversations?conversationId=${selectedLead.conversationId}`
                                             )
                                         }
+                                        disabled={!canOpenConversation}
                                     >
                                         Open Conversation
                                     </Button>
 
-                                    <Button variant="outline">
+                                    <Button variant="outline" disabled={!canEditLead}>
                                         Mark Follow-up
                                     </Button>
 
                                     <Button
                                         variant="outline"
                                         onClick={() => setIsNewBookingOpen(true)}
+                                        disabled={!canCreateBooking}
                                     >
                                         Create Booking
                                     </Button>

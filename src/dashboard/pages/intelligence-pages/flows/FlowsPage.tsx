@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAIFlowsStore } from "@/store/dashboard/aiFlowsStore";
+import { useAuthStore } from "@/store/authStore";
 import type { AIFlow, AIFlowStatus } from "@/services/dashboard/aiFlowsService";
 import { formatTime, getStatusClass, getStatusIcon, getConversionClass, formatLabel } from "./helpers/FlowsHelpers";
 import NewFlowModal from "./new-flow/NewFlowModal";
@@ -37,6 +38,13 @@ export const FlowsPage = () => {
         deleteFlow,
         selectFlow,
     } = useAIFlowsStore();
+
+    const hasPermission = useAuthStore((state) => state.hasPermission);
+
+    const canCreateFlow = hasPermission("ai_flows.create");
+    const canEditFlow = hasPermission("ai_flows.edit");
+    const canDeleteFlow = hasPermission("ai_flows.delete");
+    const canManageFlow = canEditFlow || canDeleteFlow;
 
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<AIFlowStatus | "all">("all");
@@ -74,11 +82,15 @@ export const FlowsPage = () => {
     }, [flows]);
 
     const handleUpdateStatus = async (flow: AIFlow, status: AIFlowStatus) => {
+        if (!canEditFlow) return;
+
         await updateFlowStatus(flow, status);
         setOpenMenuId(null);
     };
 
     const handleDelete = async (flow: AIFlow) => {
+        if (!canDeleteFlow) return;
+
         await deleteFlow(flow);
         setOpenMenuId(null);
     };
@@ -109,10 +121,15 @@ export const FlowsPage = () => {
                         Refresh
                     </Button>
 
-                    <Button className="bg-primary hover:bg-primary/90" onClick={() => setIsNewFlowOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        New Flow
-                    </Button>
+                    {canCreateFlow && (
+                        <Button
+                            className="bg-primary hover:bg-primary/90"
+                            onClick={() => setIsNewFlowOpen(true)}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            New Flow
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -338,78 +355,86 @@ export const FlowsPage = () => {
                                         </div>
                                     </div>
 
-                                    <div className="relative">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() =>
-                                                setOpenMenuId(
-                                                    openMenuId ===
-                                                        selectedFlow.id
-                                                        ? null
-                                                        : selectedFlow.id
-                                                )
-                                            }
-                                        >
-                                            <MoreVertical className="mr-2 h-4 w-4" />
-                                            Actions
-                                        </Button>
+                                    {canManageFlow && (
+                                        <div className="relative">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                    setOpenMenuId(
+                                                        openMenuId ===
+                                                            selectedFlow.id
+                                                            ? null
+                                                            : selectedFlow.id
+                                                    )
+                                                }
+                                            >
+                                                <MoreVertical className="mr-2 h-4 w-4" />
+                                                Actions
+                                            </Button>
 
-                                        {openMenuId === selectedFlow.id && (
-                                            <div className="absolute right-0 top-10 z-50 w-52 overflow-hidden rounded-xl border border-border/60 bg-background shadow-xl">
-                                                <button
-                                                    onClick={() =>
-                                                        handleUpdateStatus(
-                                                            selectedFlow,
-                                                            "active"
-                                                        )
-                                                    }
-                                                    className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-secondary/60"
-                                                >
-                                                    <PlayCircle className="h-4 w-4 text-emerald-400" />
-                                                    Activate
-                                                </button>
+                                            {openMenuId === selectedFlow.id && (
+                                                <div className="absolute right-0 top-10 z-50 w-52 overflow-hidden rounded-xl border border-border/60 bg-background shadow-xl">
+                                                    {canEditFlow && (
+                                                        <>
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleUpdateStatus(
+                                                                        selectedFlow,
+                                                                        "active"
+                                                                    )
+                                                                }
+                                                                className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-secondary/60"
+                                                            >
+                                                                <PlayCircle className="h-4 w-4 text-emerald-400" />
+                                                                Activate
+                                                            </button>
 
-                                                <button
-                                                    onClick={() =>
-                                                        handleUpdateStatus(
-                                                            selectedFlow,
-                                                            "paused"
-                                                        )
-                                                    }
-                                                    className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-secondary/60"
-                                                >
-                                                    <PauseCircle className="h-4 w-4 text-blue-400" />
-                                                    Pause
-                                                </button>
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleUpdateStatus(
+                                                                        selectedFlow,
+                                                                        "paused"
+                                                                    )
+                                                                }
+                                                                className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-secondary/60"
+                                                            >
+                                                                <PauseCircle className="h-4 w-4 text-blue-400" />
+                                                                Pause
+                                                            </button>
 
-                                                <button
-                                                    onClick={() =>
-                                                        handleUpdateStatus(
-                                                            selectedFlow,
-                                                            "archived"
-                                                        )
-                                                    }
-                                                    className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-secondary/60"
-                                                >
-                                                    <XCircle className="h-4 w-4 text-red-400" />
-                                                    Archive
-                                                </button>
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleUpdateStatus(
+                                                                        selectedFlow,
+                                                                        "archived"
+                                                                    )
+                                                                }
+                                                                className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-secondary/60"
+                                                            >
+                                                                <XCircle className="h-4 w-4 text-red-400" />
+                                                                Archive
+                                                            </button>
+                                                        </>
+                                                    )}
 
-                                                <button
-                                                    onClick={() =>
-                                                        handleDelete(
-                                                            selectedFlow
-                                                        )
-                                                    }
-                                                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/10"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                    Delete Flow
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
+                                                    {canDeleteFlow && (
+                                                        <button
+                                                            onClick={() =>
+                                                                handleDelete(
+                                                                    selectedFlow
+                                                                )
+                                                            }
+                                                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/10"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                            Delete Flow
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -508,32 +533,34 @@ export const FlowsPage = () => {
                                     </div>
                                 </div>
 
-                                <div className="mt-5 flex flex-wrap gap-3">
-                                    <Button>
-                                        <Zap className="mr-2 h-4 w-4" />
-                                        Run Test
-                                    </Button>
+                                {canEditFlow && (
+                                    <div className="mt-5 flex flex-wrap gap-3">
+                                        <Button>
+                                            <Zap className="mr-2 h-4 w-4" />
+                                            Run Test
+                                        </Button>
 
-                                    <Button variant="outline">
-                                        Edit Flow
-                                    </Button>
+                                        <Button variant="outline">
+                                            Edit Flow
+                                        </Button>
 
-                                    <Button
-                                        variant="outline"
-                                        onClick={() =>
-                                            handleUpdateStatus(
-                                                selectedFlow,
-                                                selectedFlow.status === "active"
-                                                    ? "paused"
-                                                    : "active"
-                                            )
-                                        }
-                                    >
-                                        {selectedFlow.status === "active"
-                                            ? "Pause Flow"
-                                            : "Activate Flow"}
-                                    </Button>
-                                </div>
+                                        <Button
+                                            variant="outline"
+                                            onClick={() =>
+                                                handleUpdateStatus(
+                                                    selectedFlow,
+                                                    selectedFlow.status === "active"
+                                                        ? "paused"
+                                                        : "active"
+                                                )
+                                            }
+                                        >
+                                            {selectedFlow.status === "active"
+                                                ? "Pause Flow"
+                                                : "Activate Flow"}
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (
@@ -555,7 +582,7 @@ export const FlowsPage = () => {
                 </Card>
             </div>
 
-            {isNewFlowOpen && (
+            {canCreateFlow && isNewFlowOpen && (
                 <NewFlowModal
                     open={isNewFlowOpen}
                     onClose={() => setIsNewFlowOpen(false)}

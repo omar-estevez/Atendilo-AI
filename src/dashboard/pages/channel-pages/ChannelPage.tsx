@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useChannelsStore } from "@/store/dashboard/channelsStore";
+import { useAuthStore } from "@/store/authStore";
 import type {
     // Channel,
     ChannelType,
@@ -35,6 +36,9 @@ export const ChannelPage = () => {
         updateChannelStatus,
         updateChannelConfig,
     } = useChannelsStore();
+
+    const hasPermission = useAuthStore((state) => state.hasPermission);
+    const canManageChannels = hasPermission("channels.manage");
 
     const channelType = channel as ChannelType;
 
@@ -74,7 +78,21 @@ export const ChannelPage = () => {
     }, [selectedChannel]);
 
     const handleCreateChannel = async () => {
+        if (!canManageChannels) return;
+
         await createChannelByType(channelType);
+    };
+
+    const handleUpdateChannelStatus: typeof updateChannelStatus = async (...args) => {
+        if (!canManageChannels) return;
+
+        await updateChannelStatus(...args);
+    };
+
+    const handleUpdateChannelConfig: typeof updateChannelConfig = async (...args) => {
+        if (!canManageChannels) return;
+
+        await updateChannelConfig(...args);
     };
 
     if (!isValidChannel) {
@@ -122,7 +140,7 @@ export const ChannelPage = () => {
                         Refresh
                     </Button>
 
-                    {!selectedChannel && (
+                    {canManageChannels && !selectedChannel && (
                         <Button
                             className="bg-primary hover:bg-primary/90"
                             onClick={handleCreateChannel}
@@ -133,6 +151,14 @@ export const ChannelPage = () => {
                     )}
                 </div>
             </div>
+
+            {!canManageChannels && (
+                <Card className="mb-4 border-border/50 bg-muted/10 p-4">
+                    <p className="text-sm text-muted-foreground">
+                        View-only access. Only owners and admins can create channels, update configuration or change channel status.
+                    </p>
+                </Card>
+            )}
 
             {error && (
                 <Card className="mb-4 border-red-500/30 bg-red-500/10 p-4">
@@ -183,13 +209,31 @@ export const ChannelPage = () => {
                         </div>
                     </div>
 
-                    <ChannelConfigForm
-                        key={`${channelType}-${selectedChannel?.id || "new"}`}
-                        channelType={channelType}
-                        selectedChannel={selectedChannel}
-                        updateChannelConfig={updateChannelConfig}
-                        updateChannelStatus={updateChannelStatus}
-                    />
+                    {canManageChannels ? (
+                        <ChannelConfigForm
+                            key={`${channelType}-${selectedChannel?.id || "new"}`}
+                            channelType={channelType}
+                            selectedChannel={selectedChannel}
+                            updateChannelConfig={handleUpdateChannelConfig}
+                            updateChannelStatus={handleUpdateChannelStatus}
+                        />
+                    ) : (
+                        <div className="space-y-4 p-5">
+                            <div className="rounded-2xl border border-border/60 bg-background/40 p-4">
+                                <h3 className="font-semibold">
+                                    Configuration Preview
+                                </h3>
+
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                    You can view this channel configuration, but you cannot modify provider settings, automation behavior or status.
+                                </p>
+
+                                <pre className="mt-4 overflow-x-auto rounded-xl border border-border/60 bg-card/60 p-4 text-xs text-muted-foreground">
+                                    {JSON.stringify(selectedChannel?.config || {}, null, 2)}
+                                </pre>
+                            </div>
+                        </div>
+                    )}
                 </Card>
 
                 <div className="space-y-5">

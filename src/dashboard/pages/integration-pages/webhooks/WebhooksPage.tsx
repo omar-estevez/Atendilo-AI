@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useWebhooksStore } from "@/store/dashboard/webhooksStore";
+import { useAuthStore } from "@/store/authStore";
 import type {
     Webhook as WebhookType,
 } from "@/services/dashboard/webhooksService";
@@ -36,6 +37,9 @@ export const WebhooksPage = () => {
 
     const [isNewWebhookOpen, setIsNewWebhookOpen] = useState(false);
     const [copiedValue, setCopiedValue] = useState<string | null>(null);
+
+    const hasPermission = useAuthStore((state) => state.hasPermission);
+    const canManageWebhooks = hasPermission("webhooks.manage");
 
     useEffect(() => {
         loadWebhooks();
@@ -59,7 +63,24 @@ export const WebhooksPage = () => {
         }, 1500);
     };
 
+    const handleTest = async (webhook: WebhookType) => {
+        if (!canManageWebhooks) return;
+
+        await testWebhook(webhook);
+    };
+
+    const handleUpdateStatus = async (
+        webhook: WebhookType,
+        status: WebhookType["status"]
+    ) => {
+        if (!canManageWebhooks) return;
+
+        await updateWebhookStatus(webhook, status);
+    };
+
     const handleDelete = async (webhook: WebhookType) => {
+        if (!canManageWebhooks) return;
+
         await deleteWebhook(webhook);
     };
 
@@ -88,15 +109,25 @@ export const WebhooksPage = () => {
                         Refresh
                     </Button>
 
-                    <Button
-                        className="bg-primary hover:bg-primary/90"
-                        onClick={() => setIsNewWebhookOpen(true)}
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        New Webhook
-                    </Button>
+                    {canManageWebhooks && (
+                        <Button
+                            className="bg-primary hover:bg-primary/90"
+                            onClick={() => setIsNewWebhookOpen(true)}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            New Webhook
+                        </Button>
+                    )}
                 </div>
             </div>
+
+            {!canManageWebhooks && (
+                <Card className="mb-4 border-border/50 bg-muted/10 p-4">
+                    <p className="text-sm text-muted-foreground">
+                        View-only access. Only owners and admins can create, test, activate, pause or delete webhooks.
+                    </p>
+                </Card>
+            )}
 
             {error && (
                 <Card className="mb-4 border-red-500/30 bg-red-500/10 p-4">
@@ -396,56 +427,58 @@ export const WebhooksPage = () => {
                                     </p>
                                 </div>
 
-                                <div className="flex flex-wrap gap-3">
-                                    <Button
-                                        onClick={() =>
-                                            testWebhook(selectedWebhook)
-                                        }
-                                    >
-                                        <Send className="mr-2 h-4 w-4" />
-                                        Test Webhook
-                                    </Button>
+                                {canManageWebhooks && (
+                                    <div className="flex flex-wrap gap-3">
+                                        <Button
+                                            onClick={() =>
+                                                handleTest(selectedWebhook)
+                                            }
+                                        >
+                                            <Send className="mr-2 h-4 w-4" />
+                                            Test Webhook
+                                        </Button>
 
-                                    {selectedWebhook.status !== "active" && (
+                                        {selectedWebhook.status !== "active" && (
+                                            <Button
+                                                variant="outline"
+                                                onClick={() =>
+                                                    handleUpdateStatus(
+                                                        selectedWebhook,
+                                                        "active"
+                                                    )
+                                                }
+                                            >
+                                                <PlayCircle className="mr-2 h-4 w-4" />
+                                                Activate
+                                            </Button>
+                                        )}
+
+                                        {selectedWebhook.status === "active" && (
+                                            <Button
+                                                variant="outline"
+                                                onClick={() =>
+                                                    handleUpdateStatus(
+                                                        selectedWebhook,
+                                                        "paused"
+                                                    )
+                                                }
+                                            >
+                                                <PauseCircle className="mr-2 h-4 w-4" />
+                                                Pause
+                                            </Button>
+                                        )}
+
                                         <Button
                                             variant="outline"
                                             onClick={() =>
-                                                updateWebhookStatus(
-                                                    selectedWebhook,
-                                                    "active"
-                                                )
+                                                handleDelete(selectedWebhook)
                                             }
                                         >
-                                            <PlayCircle className="mr-2 h-4 w-4" />
-                                            Activate
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Delete
                                         </Button>
-                                    )}
-
-                                    {selectedWebhook.status === "active" && (
-                                        <Button
-                                            variant="outline"
-                                            onClick={() =>
-                                                updateWebhookStatus(
-                                                    selectedWebhook,
-                                                    "paused"
-                                                )
-                                            }
-                                        >
-                                            <PauseCircle className="mr-2 h-4 w-4" />
-                                            Pause
-                                        </Button>
-                                    )}
-
-                                    <Button
-                                        variant="outline"
-                                        onClick={() =>
-                                            handleDelete(selectedWebhook)
-                                        }
-                                    >
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete
-                                    </Button>
-                                </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (
@@ -466,7 +499,7 @@ export const WebhooksPage = () => {
                 </Card>
             </div>
 
-            {isNewWebhookOpen && (
+            {canManageWebhooks && isNewWebhookOpen && (
                 <NewWebhookModal
                     open={isNewWebhookOpen}
                     onClose={() => setIsNewWebhookOpen(false)}

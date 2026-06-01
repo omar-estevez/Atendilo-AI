@@ -6,9 +6,11 @@ import {
     Crown,
     LogOut,
     Plus,
+    User,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { sidebarSections, type NavItem } from "@/dashboard/config/sidebarItems";
+import { EditProfileModal } from "@/dashboard/components/profile/EditProfileModal";
 
 interface SidebarProps {
     sidebarCollapsed: boolean;
@@ -56,8 +58,10 @@ export const Sidebar = ({
     const navigate = useNavigate();
 
     const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
+    const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+    const [editProfileOpen, setEditProfileOpen] = useState(false);
 
-    const { business, profile, subscription, modules, hasModule, logout } = useAuthStore();
+    const { business, profile, subscription, modules, hasModule, hasPermission, logout, updateProfile } = useAuthStore();
 
     const sidebarWidth = sidebarCollapsed ? "lg:w-20" : "lg:w-72";
 
@@ -81,7 +85,9 @@ export const Sidebar = ({
     const visibleSections = sidebarSections
         .map((section) => ({
             ...section,
-            items: section.items.filter((item) => hasModule(item.moduleKey)),
+            items: section.items.filter((item) => {
+                return hasModule(item.moduleKey) && hasPermission(item.permissionKey);
+            }),
         }))
         .filter((section) => section.items.length > 0);
 
@@ -301,43 +307,88 @@ export const Sidebar = ({
                         </div>
                     )}
 
-                    <div className="border-t border-border/50 p-3">
-                        <div
-                            className={`flex items-center ${sidebarCollapsed ? "justify-center" : "justify-between"
-                                }`}
-                        >
-                            <div className="flex min-w-0 items-center gap-3">
-                                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20">
-                                    <span className="text-sm font-semibold">
-                                        {getInitials(profile?.full_name || profile?.email)}
-                                    </span>
+                    <div className="relative border-t border-border/50 p-3">
+                        <div className="flex items-center justify-between">
+                            <button
+                                onClick={() => setProfileMenuOpen((current) => !current)}
+                                className="cursor-pointer flex min-w-0 flex-1 items-center gap-3 rounded-xl p-1.5 text-left transition-colors hover:bg-secondary/60"
+                            >
+                                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/20">
+                                    {profile?.avatar_url ? (
+                                        <img
+                                            src={profile.avatar_url}
+                                            alt={profile?.full_name || "User avatar"}
+                                            className="h-full w-full object-cover"
+                                        />
+                                    ) : (
+                                        <span className="text-sm font-semibold">
+                                            {getInitials(profile?.full_name || profile?.email)}
+                                        </span>
+                                    )}
+
                                     <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-emerald-400" />
                                 </div>
 
-                                {!sidebarCollapsed && (
-                                    <div className="min-w-0">
-                                        <p className="truncate text-sm font-semibold">
-                                            {profile?.full_name || profile?.email || "User"}
-                                        </p>
-                                        <p className="text-xs capitalize text-muted-foreground">
-                                            {profile?.role || "viewer"}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
+                                <div className="min-w-0">
+                                    <p className="truncate text-sm font-semibold">
+                                        {profile?.full_name || profile?.email || "User"}
+                                    </p>
+                                    <p className="text-xs capitalize text-muted-foreground">
+                                        {profile?.role || "viewer"}
+                                    </p>
+                                </div>
+                            </button>
 
-                            {!sidebarCollapsed && (
+                            {/* <button
+                                onClick={handleLogout}
+                                className="cursor-pointer rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                            >
+                                <LogOut className="h-4 w-4" />
+                            </button> */}
+                        </div>
+
+                        {profileMenuOpen && (
+                            <div className="absolute bottom-full left-3 right-3 z-50 mb-2 rounded-xl border border-border/50 bg-background p-1 shadow-xl">
+                                <button
+                                    onClick={() => {
+                                        setProfileMenuOpen(false);
+                                        setEditProfileOpen(true);
+                                    }}
+                                    className="cursor-pointer flex w-full items-center gap-2 rounded-lg p-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                                >
+                                    <User className="h-4 w-4" />
+                                    Edit profile
+                                </button>
+
+                                <div className="my-1 border-t border-border/50" />
+
                                 <button
                                     onClick={handleLogout}
-                                    className="cursor-pointer rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                                    className="cursor-pointer flex w-full items-center gap-2 rounded-lg p-2 text-sm text-red-400 transition-colors hover:bg-red-500/10"
                                 >
                                     <LogOut className="h-4 w-4" />
+                                    Logout
                                 </button>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </aside>
+
+            {editProfileOpen && (
+                <EditProfileModal
+                    currentName={profile?.full_name}
+                    currentAvatarUrl={profile?.avatar_url}
+                    currentEmail={profile?.email}
+                    onClose={() => setEditProfileOpen(false)}
+                    onSave={async ({ fullName, avatarFile }) => {
+                        await updateProfile({
+                            fullName,
+                            avatarFile,
+                        });
+                    }}
+                />
+            )}
         </>
     );
 };

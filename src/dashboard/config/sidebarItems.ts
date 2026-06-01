@@ -28,6 +28,7 @@ export type NavItem = {
     label: string;
     path: string;
     moduleKey: string;
+    permissionKey: string;
     icon: React.ElementType;
     badge?: number | string | null;
     status?: "active" | "inactive" | "upgrade";
@@ -48,6 +49,7 @@ export const sidebarSections: NavSection[] = [
                 label: "Dashboard",
                 path: "/dashboard",
                 moduleKey: "dashboard",
+                permissionKey: "dashboard.view",
                 icon: Home,
             },
             {
@@ -55,6 +57,7 @@ export const sidebarSections: NavSection[] = [
                 label: "Conversations",
                 path: "/dashboard/conversations",
                 moduleKey: "conversations",
+                permissionKey: "conversations.view",
                 icon: MessageSquare,
             },
             {
@@ -62,6 +65,7 @@ export const sidebarSections: NavSection[] = [
                 label: "Voice AI",
                 path: "/dashboard/voice",
                 moduleKey: "voice_ai",
+                permissionKey: "voice_ai.view",
                 icon: Phone,
             },
             {
@@ -69,6 +73,7 @@ export const sidebarSections: NavSection[] = [
                 label: "Bookings",
                 path: "/dashboard/bookings",
                 moduleKey: "bookings",
+                permissionKey: "bookings.view",
                 icon: Calendar,
             },
             {
@@ -76,6 +81,7 @@ export const sidebarSections: NavSection[] = [
                 label: "Leads",
                 path: "/dashboard/leads",
                 moduleKey: "leads",
+                permissionKey: "leads.view",
                 icon: Users,
             },
             {
@@ -83,6 +89,7 @@ export const sidebarSections: NavSection[] = [
                 label: "Analytics",
                 path: "/dashboard/analytics",
                 moduleKey: "analytics",
+                permissionKey: "analytics.view",
                 icon: BarChart3,
             },
         ],
@@ -96,6 +103,7 @@ export const sidebarSections: NavSection[] = [
                 label: "AI Activity",
                 path: "/dashboard/ai-activity",
                 moduleKey: "ai_activity",
+                permissionKey: "ai_activity.view",
                 icon: Brain,
             },
             {
@@ -103,6 +111,7 @@ export const sidebarSections: NavSection[] = [
                 label: "AI Flows",
                 path: "/dashboard/flows",
                 moduleKey: "ai_flows",
+                permissionKey: "ai_flows.view",
                 icon: Workflow,
             },
             {
@@ -110,6 +119,7 @@ export const sidebarSections: NavSection[] = [
                 label: "Templates",
                 path: "/dashboard/templates",
                 moduleKey: "templates",
+                permissionKey: "templates.view",
                 icon: FileText,
             },
         ],
@@ -122,6 +132,7 @@ export const sidebarSections: NavSection[] = [
                 label: "WhatsApp",
                 path: "/dashboard/channels/whatsapp",
                 moduleKey: "whatsapp",
+                permissionKey: "channels.view",
                 icon: MessageCircle,
             },
             {
@@ -129,6 +140,7 @@ export const sidebarSections: NavSection[] = [
                 label: "SMS",
                 path: "/dashboard/channels/sms",
                 moduleKey: "sms",
+                permissionKey: "channels.view",
                 icon: Smartphone,
             },
             {
@@ -136,6 +148,7 @@ export const sidebarSections: NavSection[] = [
                 label: "Web Chat",
                 path: "/dashboard/channels/webchat",
                 moduleKey: "webchat",
+                permissionKey: "channels.view",
                 icon: Globe,
             },
             {
@@ -143,6 +156,7 @@ export const sidebarSections: NavSection[] = [
                 label: "Email",
                 path: "/dashboard/channels/email",
                 moduleKey: "email",
+                permissionKey: "channels.view",
                 icon: Mail,
             },
         ],
@@ -155,6 +169,7 @@ export const sidebarSections: NavSection[] = [
                 label: "Webhooks",
                 path: "/dashboard/webhooks",
                 moduleKey: "webhooks",
+                permissionKey: "webhooks.view",
                 icon: Webhook,
             },
             {
@@ -162,6 +177,7 @@ export const sidebarSections: NavSection[] = [
                 label: "Integrations",
                 path: "/dashboard/integrations",
                 moduleKey: "integrations",
+                permissionKey: "integrations.view",
                 icon: Plug,
             },
             {
@@ -169,6 +185,7 @@ export const sidebarSections: NavSection[] = [
                 label: "API Keys",
                 path: "/dashboard/api",
                 moduleKey: "api_keys",
+                permissionKey: "api_keys.view",
                 icon: Key,
             },
         ],
@@ -181,6 +198,7 @@ export const sidebarSections: NavSection[] = [
                 label: "Business",
                 path: "/dashboard/business",
                 moduleKey: "business",
+                permissionKey: "business.view",
                 icon: Building2,
             },
             {
@@ -188,6 +206,7 @@ export const sidebarSections: NavSection[] = [
                 label: "Team",
                 path: "/dashboard/team",
                 moduleKey: "team",
+                permissionKey: "team.view",
                 icon: UserCog,
             },
             {
@@ -195,6 +214,7 @@ export const sidebarSections: NavSection[] = [
                 label: "Billing",
                 path: "/dashboard/billing",
                 moduleKey: "billing",
+                permissionKey: "billing.view",
                 icon: CreditCard,
             },
             {
@@ -202,6 +222,7 @@ export const sidebarSections: NavSection[] = [
                 label: "Security",
                 path: "/dashboard/security",
                 moduleKey: "security",
+                permissionKey: "security.view",
                 icon: Shield,
             },
             {
@@ -209,6 +230,7 @@ export const sidebarSections: NavSection[] = [
                 label: "Notifications",
                 path: "/dashboard/notifications",
                 moduleKey: "notifications",
+                permissionKey: "notifications.view",
                 icon: BellRing,
             },
         ],

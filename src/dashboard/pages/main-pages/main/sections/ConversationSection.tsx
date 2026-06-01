@@ -1,15 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Workflow, ExternalLink } from "lucide-react";
-import { formatLabel, getInitials, getLastMessage, getScoreClass, getSentimentClass, getUrgencyClass } from "../helpers/ConversationMainHelpers"
+import { formatLabel, getInitials, getLastMessage, getScoreClass, getSentimentClass, getUrgencyClass } from "../helpers/ConversationMainHelpers";
 import { useDashboardDataStore } from "@/store/dashboard/dashboardDataStore";
+import { useAuthStore } from "@/store/authStore";
 import { useNavigate } from "react-router";
 
 export const ConversationSection = () => {
-
     const navigate = useNavigate();
 
     const { recentConversations } = useDashboardDataStore();
+    const hasPermission = useAuthStore((state) => state.hasPermission);
+
+    const canViewConversations = hasPermission("conversations.view");
 
     return (
         <Card className="lg:col-span-2 border-border/50 overflow-hidden">
@@ -19,10 +22,16 @@ export const ConversationSection = () => {
                     <h3 className="font-semibold">Intelligent Conversations</h3>
                 </div>
 
-                <Button onClick={() => navigate("/dashboard/conversations")} variant="ghost" size="sm">
-                    View all
-                    <ExternalLink className="w-4 h-4 ml-2" />
-                </Button>
+                {canViewConversations && (
+                    <Button
+                        onClick={() => navigate("/dashboard/conversations")}
+                        variant="ghost"
+                        size="sm"
+                    >
+                        View all
+                        <ExternalLink className="w-4 h-4 ml-2" />
+                    </Button>
+                )}
             </div>
 
             <div className="divide-y divide-border/50">
@@ -119,5 +128,5 @@ export const ConversationSection = () => {
                 )}
             </div>
         </Card>
-    )
-}
+    );
+};

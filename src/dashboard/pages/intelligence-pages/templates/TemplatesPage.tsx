@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useTemplatesStore } from "@/store/dashboard/templatesStore";
+import { useAuthStore } from "@/store/authStore";
 import type {
     Template,
     TemplateChannel,
@@ -36,6 +37,11 @@ export const TemplatesPage = () => {
         selectTemplate,
     } = useTemplatesStore();
 
+    const hasPermission = useAuthStore((state) => state.hasPermission);
+
+    const canCreateTemplate = hasPermission("templates.create");
+    const canEditTemplate = hasPermission("templates.edit");
+    const canDeleteTemplate = hasPermission("templates.delete");
     const [searchTerm, setSearchTerm] = useState("");
     const [typeFilter, setTypeFilter] = useState<TemplateType | "all">("all");
     const [channelFilter, setChannelFilter] =
@@ -84,6 +90,20 @@ export const TemplatesPage = () => {
         await navigator.clipboard.writeText(template.content);
     };
 
+    const handleToggleTemplate = async (template: Template) => {
+        if (!canEditTemplate) return;
+
+        await toggleTemplate(template);
+        setOpenMenuId(null);
+    };
+
+    const handleDeleteTemplate = async (template: Template) => {
+        if (!canDeleteTemplate) return;
+
+        await deleteTemplate(template);
+        setOpenMenuId(null);
+    };
+
     return (
         <div className="h-full px-5 py-6 sm:px-7 lg:px-8">
             <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -109,10 +129,15 @@ export const TemplatesPage = () => {
                         Refresh
                     </Button>
 
-                    <Button className="bg-primary hover:bg-primary/90" onClick={() => setIsNewTemplateOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        New Template
-                    </Button>
+                    {canCreateTemplate && (
+                        <Button
+                            className="bg-primary hover:bg-primary/90"
+                            onClick={() => setIsNewTemplateOpen(true)}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            New Template
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -380,24 +405,25 @@ export const TemplatesPage = () => {
 
                                         {openMenuId === selectedTemplate.id && (
                                             <div className="absolute right-0 top-10 z-50 w-52 overflow-hidden rounded-xl border border-border/60 bg-background shadow-xl">
-                                                <button
-                                                    onClick={() => {
-                                                        toggleTemplate(
-                                                            selectedTemplate
-                                                        );
-                                                        setOpenMenuId(null);
-                                                    }}
-                                                    className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-secondary/60"
-                                                >
-                                                    {selectedTemplate.is_active ? (
-                                                        <ToggleLeft className="h-4 w-4 text-amber-400" />
-                                                    ) : (
-                                                        <ToggleRight className="h-4 w-4 text-emerald-400" />
-                                                    )}
-                                                    {selectedTemplate.is_active
-                                                        ? "Deactivate"
-                                                        : "Activate"}
-                                                </button>
+                                                {canEditTemplate && (
+                                                    <button
+                                                        onClick={() =>
+                                                            handleToggleTemplate(
+                                                                selectedTemplate
+                                                            )
+                                                        }
+                                                        className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-secondary/60"
+                                                    >
+                                                        {selectedTemplate.is_active ? (
+                                                            <ToggleLeft className="h-4 w-4 text-amber-400" />
+                                                        ) : (
+                                                            <ToggleRight className="h-4 w-4 text-emerald-400" />
+                                                        )}
+                                                        {selectedTemplate.is_active
+                                                            ? "Deactivate"
+                                                            : "Activate"}
+                                                    </button>
+                                                )}
 
                                                 <button
                                                     onClick={() => {
@@ -412,18 +438,19 @@ export const TemplatesPage = () => {
                                                     Copy Content
                                                 </button>
 
-                                                <button
-                                                    onClick={() => {
-                                                        deleteTemplate(
-                                                            selectedTemplate
-                                                        );
-                                                        setOpenMenuId(null);
-                                                    }}
-                                                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/10"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                    Delete Template
-                                                </button>
+                                                {canDeleteTemplate && (
+                                                    <button
+                                                        onClick={() =>
+                                                            handleDeleteTemplate(
+                                                                selectedTemplate
+                                                            )
+                                                        }
+                                                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/10"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                        Delete Template
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -519,16 +546,20 @@ export const TemplatesPage = () => {
                                         Copy Template
                                     </Button>
 
-                                    <Button
-                                        variant="outline"
-                                        onClick={() =>
-                                            toggleTemplate(selectedTemplate)
-                                        }
-                                    >
-                                        {selectedTemplate.is_active
-                                            ? "Deactivate"
-                                            : "Activate"}
-                                    </Button>
+                                    {canEditTemplate && (
+                                        <Button
+                                            variant="outline"
+                                            onClick={() =>
+                                                handleToggleTemplate(
+                                                    selectedTemplate
+                                                )
+                                            }
+                                        >
+                                            {selectedTemplate.is_active
+                                                ? "Deactivate"
+                                                : "Activate"}
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -551,7 +582,7 @@ export const TemplatesPage = () => {
                 </Card>
             </div>
 
-            {isNewTemplateOpen && (
+            {canCreateTemplate && isNewTemplateOpen && (
                 <NewTemplateModal
                     open={isNewTemplateOpen}
                     onClose={() => setIsNewTemplateOpen(false)}

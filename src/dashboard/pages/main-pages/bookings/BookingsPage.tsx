@@ -23,6 +23,7 @@ import { useBookingsStore } from "@/store/dashboard/bookingsStore";
 import type { Booking, BookingStatus } from "@/services/dashboard/bookingsService";
 import { isToday, isThisWeek, getStatusContainerClass, getStatusIcon, formatDate, formatTime, getStatusClass, formatStatus, getInitials, formatFullDate } from "./helpers/BookingHelpers";
 import NewBookingModal from "./new-booking/NewBookingModal";
+import { useAuthStore } from "@/store/authStore";
 
 export const BookingsPage = () => {
     const {
@@ -36,6 +37,8 @@ export const BookingsPage = () => {
         selectBooking,
     } = useBookingsStore();
 
+    const { hasPermission } = useAuthStore();
+
     const [isNewBookingOpen, setIsNewBookingOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<BookingStatus | "all">("all");
@@ -43,6 +46,11 @@ export const BookingsPage = () => {
         "today"
     );
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+    const canCreateBooking = hasPermission("bookings.create");
+    const canEditBooking = hasPermission("bookings.edit");
+    const canDeleteBooking = hasPermission("bookings.delete");
+    const canManageBooking = canEditBooking || canDeleteBooking;
 
     useEffect(() => {
         loadBookings();
@@ -98,11 +106,17 @@ export const BookingsPage = () => {
         booking: Booking,
         status: BookingStatus
     ) => {
+
+        if (status === "cancelled" && !canDeleteBooking) return;
+        if (status !== "cancelled" && !canEditBooking) return;
+
         await updateBookingStatus(booking, status);
         setOpenMenuId(null);
     };
 
     const handleDelete = async (booking: Booking) => {
+        if (!canDeleteBooking) return;
+
         await deleteBooking(booking);
         setOpenMenuId(null);
     };
@@ -132,13 +146,15 @@ export const BookingsPage = () => {
                         Refresh
                     </Button>
 
-                    <Button
-                        className="bg-primary hover:bg-primary/90"
-                        onClick={() => setIsNewBookingOpen(true)}
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        New Booking
-                    </Button>
+                    {canCreateBooking && (
+                        <Button
+                            className="bg-primary hover:bg-primary/90"
+                            onClick={() => setIsNewBookingOpen(true)}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            New Booking
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -370,78 +386,83 @@ export const BookingsPage = () => {
                                         </div>
                                     </div>
 
-                                    <div className="relative">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() =>
-                                                setOpenMenuId(
-                                                    openMenuId ===
-                                                        selectedBooking.id
-                                                        ? null
-                                                        : selectedBooking.id
-                                                )
-                                            }
-                                        >
-                                            <MoreVertical className="mr-2 h-4 w-4" />
-                                            Actions
-                                        </Button>
+                                    {canManageBooking && (
+                                        <div className="relative">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                    setOpenMenuId(
+                                                        openMenuId === selectedBooking.id
+                                                            ? null
+                                                            : selectedBooking.id
+                                                    )
+                                                }
+                                            >
+                                                <MoreVertical className="mr-2 h-4 w-4" />
+                                                Actions
+                                            </Button>
 
-                                        {openMenuId === selectedBooking.id && (
-                                            <div className="absolute right-0 top-10 z-50 w-52 overflow-hidden rounded-xl border border-border/60 bg-background shadow-xl">
-                                                <button
-                                                    onClick={() =>
-                                                        handleUpdateStatus(
-                                                            selectedBooking,
-                                                            "confirmed"
-                                                        )
-                                                    }
-                                                    className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-secondary/60"
-                                                >
-                                                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                                                    Mark Confirmed
-                                                </button>
+                                            {openMenuId === selectedBooking.id && (
+                                                <div className="absolute right-0 top-10 z-50 w-52 overflow-hidden rounded-xl border border-border/60 bg-background shadow-xl">
+                                                    {canEditBooking && (
+                                                        <>
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleUpdateStatus(
+                                                                        selectedBooking,
+                                                                        "confirmed"
+                                                                    )
+                                                                }
+                                                                className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-secondary/60"
+                                                            >
+                                                                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                                                                Mark Confirmed
+                                                            </button>
 
-                                                <button
-                                                    onClick={() =>
-                                                        handleUpdateStatus(
-                                                            selectedBooking,
-                                                            "completed"
-                                                        )
-                                                    }
-                                                    className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-secondary/60"
-                                                >
-                                                    <CheckCircle2 className="h-4 w-4 text-blue-400" />
-                                                    Mark Completed
-                                                </button>
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleUpdateStatus(
+                                                                        selectedBooking,
+                                                                        "completed"
+                                                                    )
+                                                                }
+                                                                className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-secondary/60"
+                                                            >
+                                                                <CheckCircle2 className="h-4 w-4 text-blue-400" />
+                                                                Mark Completed
+                                                            </button>
+                                                        </>
+                                                    )}
 
-                                                <button
-                                                    onClick={() =>
-                                                        handleUpdateStatus(
-                                                            selectedBooking,
-                                                            "cancelled"
-                                                        )
-                                                    }
-                                                    className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-secondary/60"
-                                                >
-                                                    <XCircle className="h-4 w-4 text-red-400" />
-                                                    Cancel Booking
-                                                </button>
+                                                    {canDeleteBooking && (
+                                                        <>
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleUpdateStatus(
+                                                                        selectedBooking,
+                                                                        "cancelled"
+                                                                    )
+                                                                }
+                                                                className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-secondary/60"
+                                                            >
+                                                                <XCircle className="h-4 w-4 text-red-400" />
+                                                                Cancel Booking
+                                                            </button>
 
-                                                <button
-                                                    onClick={() =>
-                                                        handleDelete(
-                                                            selectedBooking
-                                                        )
-                                                    }
-                                                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/10"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                    Delete Booking
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
+                                                            <button
+                                                                onClick={() => handleDelete(selectedBooking)}
+                                                                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/10"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                                Delete Booking
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -539,43 +560,51 @@ export const BookingsPage = () => {
                                     </p>
                                 </div>
 
-                                <div className="mt-5 flex flex-wrap gap-3">
-                                    <Button
-                                        onClick={() =>
-                                            handleUpdateStatus(
-                                                selectedBooking,
-                                                "confirmed"
-                                            )
-                                        }
-                                    >
-                                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                                        Confirm
-                                    </Button>
+                                {canManageBooking && (
+                                    <div className="mt-5 flex flex-wrap gap-3">
+                                        {canEditBooking && (
+                                            <>
+                                                <Button
+                                                    onClick={() =>
+                                                        handleUpdateStatus(
+                                                            selectedBooking,
+                                                            "confirmed"
+                                                        )
+                                                    }
+                                                >
+                                                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                                                    Confirm
+                                                </Button>
 
-                                    <Button
-                                        variant="outline"
-                                        onClick={() =>
-                                            handleUpdateStatus(
-                                                selectedBooking,
-                                                "completed"
-                                            )
-                                        }
-                                    >
-                                        Mark Completed
-                                    </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() =>
+                                                        handleUpdateStatus(
+                                                            selectedBooking,
+                                                            "completed"
+                                                        )
+                                                    }
+                                                >
+                                                    Mark Completed
+                                                </Button>
+                                            </>
+                                        )}
 
-                                    <Button
-                                        variant="outline"
-                                        onClick={() =>
-                                            handleUpdateStatus(
-                                                selectedBooking,
-                                                "cancelled"
-                                            )
-                                        }
-                                    >
-                                        Cancel
-                                    </Button>
-                                </div>
+                                        {canDeleteBooking && (
+                                            <Button
+                                                variant="outline"
+                                                onClick={() =>
+                                                    handleUpdateStatus(
+                                                        selectedBooking,
+                                                        "cancelled"
+                                                    )
+                                                }
+                                            >
+                                                Cancel
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (
@@ -695,7 +724,7 @@ export const BookingsPage = () => {
                 </div>
             </Card>
 
-            {isNewBookingOpen && (
+            {canCreateBooking && isNewBookingOpen && (
                 <NewBookingModal
                     open={isNewBookingOpen}
                     onClose={() => setIsNewBookingOpen(false)}

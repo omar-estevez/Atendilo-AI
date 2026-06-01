@@ -17,11 +17,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useVoiceAIStore } from "@/store/dashboard/voiceAiStore";
+import { useAuthStore } from "@/store/authStore";
 import type {
     VoiceCall,
     VoiceCallStatus,
 } from "@/services/dashboard/voiceAiService";
-import { formatDuration, formatTimeAgo, getSentimentIcon, getStatusClass, getStatusIcon } from "./helpers/VoiceAiHelpers";
+import {
+    formatDuration,
+    formatTimeAgo,
+    getSentimentIcon,
+    getStatusClass,
+    getStatusIcon,
+} from "./helpers/VoiceAiHelpers";
 
 export const VoiceAIPage = () => {
     const {
@@ -34,6 +41,10 @@ export const VoiceAIPage = () => {
         deleteCall,
         selectCall,
     } = useVoiceAIStore();
+
+    const hasPermission = useAuthStore((state) => state.hasPermission);
+
+    const canManageVoiceAI = hasPermission("voice_ai.manage");
 
     const [statusFilter, setStatusFilter] =
         useState<VoiceCallStatus | "all">("all");
@@ -78,7 +89,18 @@ export const VoiceAIPage = () => {
         };
     }, [calls]);
 
+    const handleUpdateStatus = async (
+        call: VoiceCall,
+        status: VoiceCallStatus
+    ) => {
+        if (!canManageVoiceAI) return;
+
+        await updateCallStatus(call, status);
+    };
+
     const handleDelete = async (call: VoiceCall) => {
+        if (!canManageVoiceAI) return;
+
         await deleteCall(call);
     };
 
@@ -135,6 +157,14 @@ export const VoiceAIPage = () => {
             {error && (
                 <Card className="mb-4 border-red-500/30 bg-red-500/10 p-4">
                     <p className="text-sm text-red-400">{error}</p>
+                </Card>
+            )}
+
+            {!canManageVoiceAI && (
+                <Card className="mb-4 border-border/50 bg-muted/10 p-4">
+                    <p className="text-sm text-muted-foreground">
+                        View-only access. You can inspect Voice AI calls, but you cannot update status or delete call records.
+                    </p>
                 </Card>
             )}
 
@@ -389,43 +419,45 @@ export const VoiceAIPage = () => {
                                     </p>
                                 </div>
 
-                                <div className="flex flex-wrap gap-3">
-                                    {selectedCall.status !== "completed" && (
+                                {canManageVoiceAI && (
+                                    <div className="flex flex-wrap gap-3">
+                                        {selectedCall.status !== "completed" && (
+                                            <Button
+                                                onClick={() =>
+                                                    handleUpdateStatus(
+                                                        selectedCall,
+                                                        "completed"
+                                                    )
+                                                }
+                                            >
+                                                <CheckCircle2 className="mr-2 h-4 w-4" />
+                                                Mark Completed
+                                            </Button>
+                                        )}
+
                                         <Button
+                                            variant="outline"
                                             onClick={() =>
-                                                updateCallStatus(
+                                                handleUpdateStatus(
                                                     selectedCall,
-                                                    "completed"
+                                                    "missed"
                                                 )
                                             }
                                         >
-                                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                                            Mark Completed
+                                            Mark Missed
                                         </Button>
-                                    )}
 
-                                    <Button
-                                        variant="outline"
-                                        onClick={() =>
-                                            updateCallStatus(
-                                                selectedCall,
-                                                "missed"
-                                            )
-                                        }
-                                    >
-                                        Mark Missed
-                                    </Button>
-
-                                    <Button
-                                        variant="outline"
-                                        onClick={() =>
-                                            handleDelete(selectedCall)
-                                        }
-                                    >
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete
-                                    </Button>
-                                </div>
+                                        <Button
+                                            variant="outline"
+                                            onClick={() =>
+                                                handleDelete(selectedCall)
+                                            }
+                                        >
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Delete
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (

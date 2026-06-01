@@ -111,6 +111,11 @@ export const RegisterPage = () => {
             return;
         }
 
+        if (passwordRequirements.find(p => p.met === false)) {
+            setFormError("Password requirements.");
+            return;
+        }
+
         try {
             await register(
                 formData.email,

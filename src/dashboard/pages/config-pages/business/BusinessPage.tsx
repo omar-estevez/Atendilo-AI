@@ -23,6 +23,7 @@ import type {
     EscalationContactTypes,
     EscalationRuleKey,
 } from "@/dashboard/types";
+import { toast } from "sonner";
 
 type BusinessSettings = {
     services?: BusinessService[];
@@ -99,8 +100,8 @@ const defaultEscalationContact: EscalationContactTypes = {
 };
 
 export const BusinessPage = () => {
-    const business = useAuthStore((state) => state.business);
-    const updateBusiness = useAuthStore((state) => state.updateBusiness);
+
+    const { business, updateBusiness } = useAuthStore()
 
     const settings = (business?.settings || {}) as BusinessSettings;
 
@@ -168,7 +169,6 @@ export const BusinessPage = () => {
             ...(settings.escalationContact || {}),
         });
 
-    const [savedMessage, setSavedMessage] = useState("");
     const [isSaving, setIsSaving] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
 
@@ -179,11 +179,7 @@ export const BusinessPage = () => {
         "h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-primary";
 
     const showSavedMessage = (message: string) => {
-        setSavedMessage(message);
-
-        window.setTimeout(() => {
-            setSavedMessage("");
-        }, 2500);
+        toast.success(message)
     };
 
     const sectionHeader = (
@@ -348,12 +344,6 @@ export const BusinessPage = () => {
                     {isSaving ? "Saving..." : "Save All Changes"}
                 </Button>
             </div>
-
-            {savedMessage && (
-                <div className="absolute right-5 top-1 z-1 rounded-full border border-emerald-500/30 bg-emerald-500/20 px-4 py-2 text-sm text-emerald-400 shadow-xl">
-                    {savedMessage}
-                </div>
-            )}
 
             {formError && (
                 <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
