@@ -57,7 +57,7 @@ export const Navigation = () => {
                                     className="bg-primary hover:bg-primary/90 text-primary-foreground glow"
                                     onClick={() => navigate("/register")}
                                 >
-                                    Start Free Trial
+                                    Get Started
                                 </Button>
                             </>
                         )}

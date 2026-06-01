@@ -174,22 +174,21 @@ export const RegisterPage = () => {
 
                         {/* Headline */}
                         <h1 className="text-4xl xl:text-5xl font-bold text-foreground leading-tight mb-6">
-                            Start your{" "}
-                            <span className="text-gradient">14-day free trial</span>
+                            Create your{" "}
+                            <span className="text-gradient">Lumora Account</span>
                         </h1>
 
                         <p className="text-lg text-muted-foreground mb-12 max-w-md">
-                            No credit card required. Set up your AI receptionist in less
-                            than 5 minutes.
+                            Create your account and tell us about your business. We’ll prepare a personalized AI preview before activation.
                         </p>
 
                         {/* Benefits List */}
                         <div className="space-y-4">
                             {[
-                                "500 free messages included",
-                                "Priority support during your trial",
-                                "Access to all features",
-                                "Cancel anytime, no commitment",
+                                "Personalized AI preview",
+                                "No live AI usage yet",
+                                "Activate only after approval",
+                                "No commitment before activation",
                             ].map((feature, index) => (
                                 <motion.div
                                     key={feature}
@@ -214,16 +213,15 @@ export const RegisterPage = () => {
                             className="mt-12 p-6 glass rounded-2xl max-w-md"
                         >
                             <p className="text-muted-foreground italic mb-4">
-                                &quot;Lumora transformed my business. Now I never miss a
-                                client because I didn&apos;t respond on time.&quot;
+                                &quot;Lumora shows how your business could respond faster, capture more leads, and book more appointments automatically.&quot;
                             </p>
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-linear-to-r from-primary to-accent flex items-center justify-center text-white font-semibold">
-                                    MR
+                                    AI
                                 </div>
                                 <div>
                                     <p className="text-sm font-medium text-foreground">
-                                        Miguel Rodriguez
+                                        Example AI Receptionist Preview
                                     </p>
                                     <p className="text-xs text-muted-foreground">
                                         AutoSpa Premium - Detailing
@@ -261,12 +259,12 @@ export const RegisterPage = () => {
                         <p className="text-muted-foreground">
                             {isInviteSignup
                                 ? "Create your account to accept the team invitation"
-                                : "Complete your details to start your free trial"}
+                                : "Complete your details to request your personalized AI preview"}
                         </p>
                     </div>
 
                     {/* Social Login */}
-                    <div className="grid grid-cols-2 gap-3 mb-6">
+                    {/* <div className="grid grid-cols-2 gap-3 mb-6">
                         <Button
                             size="lg"
                             variant="outline"
@@ -295,7 +293,7 @@ export const RegisterPage = () => {
                             </span>
                         </Button>
 
-                        {/* <button
+                        <button
                             type="button"
                             className="glass flex items-center justify-center gap-2 py-3 px-4 rounded-xl hover:bg-card/80 transition-colors"
                         >
@@ -305,17 +303,17 @@ export const RegisterPage = () => {
                             <span className="text-sm font-medium text-foreground">
                                 GitHub
                             </span>
-                        </button> */}
-                    </div>
+                        </button>
+                    </div> */}
 
                     {/* Divider */}
-                    <div className="flex items-center gap-4 mb-6">
+                    {/* <div className="flex items-center gap-4 mb-6">
                         <div className="flex-1 h-px bg-border" />
                         <span className="text-sm text-muted-foreground">
                             or sign up with email
                         </span>
                         <div className="flex-1 h-px bg-border" />
-                    </div>
+                    </div> */}
 
                     {isInviteSignup && invitation && (
                         <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/10 p-4">

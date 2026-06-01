@@ -20,13 +20,12 @@ export const FinalCTASection = () => {
                         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[120px] opacity-50" />
                         <div className="relative">
                             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-6">
-                                Ready to Transform
+                                Ready to See
                                 <br />
-                                <span className="text-gradient">Your Customer Service?</span>
+                                <span className="text-gradient">Lumora for Your Business?</span>
                             </h2>
                             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 text-pretty">
-                                Join hundreds of local businesses already using Lumora AI to capture more leads,
-                                book more appointments, and grow their revenue—all on autopilot.
+                                Get a personalized AI preview showing how Lumora could answer leads, capture customer info, and help book appointments for your business.
                             </p>
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                                 <Button
@@ -34,7 +33,7 @@ export const FinalCTASection = () => {
                                     className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-6 text-lg glow"
                                     onClick={() => navigate('/register')}
                                 >
-                                    Start Your Free Trial
+                                    Request My Free Preview
                                     <ArrowRight className="w-5 h-5 ml-2" />
                                 </Button>
                                 <Button
@@ -47,7 +46,7 @@ export const FinalCTASection = () => {
                                 </Button>
                             </div>
                             <p className="text-sm text-muted-foreground mt-6">
-                                No credit card required • 14-day free trial • Cancel anytime
+                                See your AI before paying • No free trial required • Activate after approval
                             </p>
                         </div>
                     </div>

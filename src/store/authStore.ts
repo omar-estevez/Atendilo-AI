@@ -42,6 +42,12 @@ interface AuthStore {
         fullName: string,
         businessName?: string
     ) => Promise<void>;
+
+    resetPassword: (email: string) => Promise<void>;
+    updatePassword: (password: string) => Promise<void>;
+    loginWithGoogle: () => Promise<void>;
+    handleAuthCallback: () => Promise<void>;
+
     logout: () => Promise<void>;
     loadUserData: () => Promise<void>;
     refreshModules: () => Promise<void>;
@@ -540,6 +546,143 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
                         : "Failed to update profile",
                 isLoading: false,
                 loadingStep: null,
+            });
+
+            throw error;
+        }
+    },
+
+    resetPassword: async (email: string) => {
+        try {
+            set({
+                isLoading: true,
+                error: null,
+                loadingStep: "Sending recovery email...",
+            });
+
+            const cleanEmail = email.trim().replace(/\s+/g, "");
+
+            await authService.resetPassword(cleanEmail);
+
+            set({
+                isLoading: false,
+                loadingStep: null,
+                error: null,
+            });
+        } catch (error) {
+            set({
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to send recovery email",
+                isLoading: false,
+                loadingStep: null,
+            });
+
+            throw error;
+        }
+    },
+
+    updatePassword: async (password: string) => {
+        try {
+            set({
+                isLoading: true,
+                error: null,
+                loadingStep: "Updating your password...",
+            });
+
+            await authService.updatePassword(password);
+
+            set({
+                isLoading: false,
+                loadingStep: null,
+                error: null,
+            });
+        } catch (error) {
+            set({
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to update password",
+                isLoading: false,
+                loadingStep: null,
+            });
+
+            throw error;
+        }
+    },
+
+    loginWithGoogle: async () => {
+        try {
+            set({
+                isLoading: true,
+                error: null,
+                loadingStep: "Redirecting to Google...",
+            });
+
+            await authService.signInWithGoogle();
+        } catch (error) {
+            set({
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Google authentication failed",
+                isLoading: false,
+                loadingStep: null,
+            });
+
+            throw error;
+        }
+    },
+
+    handleAuthCallback: async () => {
+        try {
+            set({
+                isLoading: true,
+                error: null,
+                loadingStep: "Completing authentication...",
+            });
+
+            const session = await authService.getSession();
+
+            if (!session) {
+                throw new Error("No active session found");
+            }
+
+            set({
+                session,
+                user: session.user,
+                isAuthenticated: true,
+                isInitialized: true,
+                loadingStep: "Loading your Lumora workspace...",
+            });
+
+            try {
+                await get().loadUserData();
+            } catch (error) {
+                console.error("Error loading Google user data:", error);
+            }
+
+            set({
+                isLoading: false,
+                loadingStep: null,
+            });
+        } catch (error) {
+            set({
+                user: null,
+                session: null,
+                profile: null,
+                business: null,
+                subscription: null,
+                modules: [],
+                isAuthenticated: false,
+                isLoading: false,
+                isInitialized: true,
+                loadingStep: null,
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Authentication callback failed",
             });
 
             throw error;

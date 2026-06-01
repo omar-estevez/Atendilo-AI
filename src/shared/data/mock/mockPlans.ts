@@ -48,7 +48,7 @@ export const mockPlans: Plan[] = [
         price: 349,
         description: "For established businesses that need advanced automation and integrations.",
         features: [
-            "Unlimited AI messages*",
+            "High-volume AI messages*",
             "Up to 10 connected channels/numbers",
             "All communication channels",
             "Custom AI knowledge base",

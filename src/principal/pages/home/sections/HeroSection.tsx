@@ -57,8 +57,7 @@ export const HeroSection = () => {
                         variants={fadeInUp}
                         className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 text-pretty leading-relaxed"
                     >
-                        Your AI receptionist handles calls, texts, and WhatsApp messages 24/7.
-                        Automated booking, instant responses, and smart lead capture—all while you focus on your business.
+                        Get a custom AI receptionist for your business that answers leads, captures customer info, and helps book appointments — without hiring extra staff.
                     </motion.p>
 
                     {/* CTAs */}
@@ -68,11 +67,11 @@ export const HeroSection = () => {
                             className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-6 text-lg glow"
                             onClick={() => navigate('/register')}
                         >
-                            Start Free Trial
+                            Request My AI Preview
                             <ArrowRight className="w-5 h-5 ml-2" />
                         </Button>
                         <Button size="lg" variant="outline" className="w-full sm:w-auto px-8 py-6 text-lg border-border/50 hover:bg-secondary">
-                            Watch Demo
+                            See How It Works
                         </Button>
                     </motion.div>
 
@@ -80,15 +79,15 @@ export const HeroSection = () => {
                     <motion.div variants={fadeInUp} className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
                         <div className="flex items-center gap-2">
                             <Check className="w-4 h-4 text-primary" />
-                            <span>No credit card required</span>
+                            <span>Free personalized preview</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <Check className="w-4 h-4 text-primary" />
-                            <span>14-day free trial</span>
+                            <span>No free trial required</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <Check className="w-4 h-4 text-primary" />
-                            <span>Cancel anytime</span>
+                            <span>Activate only when ready</span>
                         </div>
                     </motion.div>
                 </motion.div>

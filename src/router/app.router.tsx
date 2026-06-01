@@ -38,6 +38,7 @@ import {
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { ChannelModuleRoute } from "./routes/ChannelModuleRoute";
 import { AccessRoute } from "./routes/AccessRoute";
+import ResetPasswordPage from "@/principal/pages/reset-password/ResetPasswordPage";
 
 export const appRouter = createBrowserRouter([
     {
@@ -85,6 +86,10 @@ export const appRouter = createBrowserRouter([
             {
                 path: "accept-invite",
                 element: <AcceptInvitePage />,
+            },
+            {
+                path: "/reset-password",
+                element: <ResetPasswordPage />,
             },
         ],
     },

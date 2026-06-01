@@ -23,11 +23,11 @@ export const PricingSection = () => {
                         <span className="text-sm text-muted-foreground">Simple Pricing</span>
                     </div>
                     <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-6">
-                        Plans That
-                        <span className="text-gradient"> Scale With You</span>
+                        Choose Your
+                        <span className="text-gradient"> AI Receptionist Plan</span>
                     </h2>
                     <p className="text-lg text-muted-foreground text-pretty">
-                        Start free, upgrade as you grow. No hidden fees, no long-term contracts.
+                        Start with a free preview. Activate only when you’re ready.
                     </p>
                 </motion.div>
 
@@ -93,7 +93,7 @@ export const PricingSection = () => {
                     className="text-center max-w-3xl mx-auto mb-16"
                 >
                     <p className="text-lg text-muted-foreground text-pretty">
-                        *Fair usage policy applies. Messaging provider fees may apply.
+                        *Provider fees may apply for SMS, WhatsApp, voice calls, and high AI usage.
                     </p>
                 </motion.div>
             </div>
