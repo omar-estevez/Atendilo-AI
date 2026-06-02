@@ -108,7 +108,7 @@ export const ConversationPage = () => {
         const interval = window.setInterval(() => {
             loadConversations();
             refreshSelectedConversation();
-        }, 3000);
+        }, 9999);
 
         return () => {
             window.clearInterval(interval);
