@@ -89,7 +89,7 @@ export const IntegrationsPage = () => {
                         Integrations
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Connect Lumora with messaging, payments, calendars and automation platforms.
+                        Connect Atendilo with messaging, payments, calendars and automation platforms.
                     </p>
                 </div>
 

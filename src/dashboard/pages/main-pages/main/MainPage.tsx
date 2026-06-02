@@ -76,10 +76,10 @@ export const MainPage = () => {
             }
         };
 
-        window.addEventListener("lumora:refresh", refresh);
+        window.addEventListener("Atendilo:refresh", refresh);
 
         return () => {
-            window.removeEventListener("lumora:refresh", refresh);
+            window.removeEventListener("Atendilo:refresh", refresh);
         };
     }, [loadDashboardData, loadBilling, canViewBilling]);
 
@@ -121,7 +121,7 @@ export const MainPage = () => {
                     <Brain className="mx-auto mb-3 h-8 w-8 animate-pulse text-primary" />
                     <p className="font-medium">Loading dashboard data...</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                        Preparing your Lumora workspace.
+                        Preparing your Atendilo workspace.
                     </p>
                 </div>
             </div>

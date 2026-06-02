@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from "react-router";
 import { useAuthStore } from "@/store/authStore";
-import { LumoraLoader } from "@/shared/components/LumoraLoader";
+import { AtendiloLoader } from "@/shared/components/AtendiloLoader";
 
 interface ModuleRouteProps {
     moduleKey: string;
@@ -12,7 +12,7 @@ export const ModuleRoute = ({ moduleKey }: ModuleRouteProps) => {
 
     if (!isInitialized) {
         return (
-            <LumoraLoader
+            <AtendiloLoader
                 message="Verifying access"
                 subMessage={loadingStep || "Checking your plan permissions..."}
             />

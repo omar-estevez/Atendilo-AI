@@ -330,7 +330,7 @@ export const BusinessPage = () => {
                     </h2>
 
                     <p className="text-sm text-muted-foreground">
-                        Configure the information Lumora uses to answer customers,
+                        Configure the information Atendilo uses to answer customers,
                         quote services, book appointments, and escalate cases.
                     </p>
                 </div>

@@ -1,4 +1,4 @@
-const WEBCHAT_SESSION_KEY = "lumora_webchat_session_id";
+const WEBCHAT_SESSION_KEY = "Atendilo_webchat_session_id";
 
 export function getOrCreateWebchatSessionId() {
     const existingSessionId = localStorage.getItem(WEBCHAT_SESSION_KEY);

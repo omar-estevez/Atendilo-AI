@@ -46,7 +46,7 @@ export const BannerSection = () => {
 
                     <div>
                         <p className="text-sm text-muted-foreground">
-                            Lumora AI is active and responding
+                            Atendilo AI is active and responding
                         </p>
                         <h2 className="text-lg font-semibold">
                             Your AI assistant is handling conversations across your enabled channels

@@ -1,6 +1,6 @@
-# Lumora AI
+# Atendilo AI
 
-Lumora AI is a modern AI automation SaaS interface designed for service-based businesses that want to manage customer conversations, leads, bookings, AI flows, voice AI, integrations, and business settings from one centralized dashboard.
+Atendilo AI is a modern AI automation SaaS interface designed for service-based businesses that want to manage customer conversations, leads, bookings, AI flows, voice AI, integrations, and business settings from one centralized dashboard.
 
 The project includes a public marketing landing page, authentication screens, legal pages, and a multi-section admin dashboard built with React, TypeScript, Vite, Tailwind CSS, shadcn-style UI components, Framer Motion, and React Router.
 
@@ -8,7 +8,7 @@ The project includes a public marketing landing page, authentication screens, le
 
 ## Overview
 
-Lumora AI is built as a frontend SaaS platform for an AI agency model. The main idea is that each business/client can access its own dashboard and, depending on the selected plan, enable different automation modules such as:
+Atendilo AI is built as a frontend SaaS platform for an AI agency model. The main idea is that each business/client can access its own dashboard and, depending on the selected plan, enable different automation modules such as:
 
 - AI-powered conversations
 - Voice AI
@@ -52,7 +52,7 @@ This version focuses on the frontend experience, UI structure, routing, and mock
 
 ### Public Website
 
-The public side of Lumora includes a marketing-oriented landing page with sections for:
+The public side of Atendilo includes a marketing-oriented landing page with sections for:
 
 - Hero section
 - Features
@@ -136,7 +136,7 @@ This is intended to help business owners quickly understand the status and value
 
 ### Bookings and Leads
 
-Lumora includes UI sections for tracking upcoming bookings, lead information, customer activity, and business opportunities generated through AI-powered interactions.
+Atendilo includes UI sections for tracking upcoming bookings, lead information, customer activity, and business opportunities generated through AI-powered interactions.
 
 ---
 
@@ -148,7 +148,7 @@ The platform includes an automation flow section designed to represent AI workfl
 
 ### Multi-Channel Structure
 
-Lumora is structured to support different communication channels such as:
+Atendilo is structured to support different communication channels such as:
 
 - WhatsApp
 - SMS

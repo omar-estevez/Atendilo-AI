@@ -124,7 +124,7 @@ export const SecurityPage = () => {
                         </h1>
                         <p className="text-lg text-muted-foreground text-pretty">
                             Protecting your data and your customers&apos; data is our highest
-                            priority. Lumora AI implements industry-leading security practices
+                            priority. Atendilo AI implements industry-leading security practices
                             to keep your business communications safe.
                         </p>
                     </motion.div>
@@ -216,7 +216,7 @@ export const SecurityPage = () => {
                             </h2>
                             <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
                                 We value the security community. If you discover a vulnerability
-                                in Lumora AI, please report it responsibly. We offer rewards for
+                                in Atendilo AI, please report it responsibly. We offer rewards for
                                 valid security reports.
                             </p>
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -229,7 +229,7 @@ export const SecurityPage = () => {
                                 </Button>
                             </div>
                             <p className="text-sm text-muted-foreground mt-6">
-                                Contact: security@lumoraai.com
+                                Contact: security@Atendiloai.com
                             </p>
                         </Card>
                     </motion.div>

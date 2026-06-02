@@ -5,7 +5,6 @@ import {
     Phone,
     Send,
     AlertTriangle,
-    Bot,
     Workflow,
 } from "lucide-react";
 
@@ -26,7 +25,11 @@ export const getActivityIcon = (type: string) => {
         case "workflow_triggered":
             return <Workflow className="h-4 w-4 text-blue-400" />;
         default:
-            return <Bot className="h-4 w-4 text-primary" />;
+            return <img
+                src="/icon.png"
+                alt="Icono"
+                className="w-4 h-4 object-contain"
+            />;
     }
 };
 

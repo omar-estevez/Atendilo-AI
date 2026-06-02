@@ -125,7 +125,7 @@ export const BookingRules = ({
                         Booking AI Behavior
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                        Lumora will use these rules before offering appointment
+                        Atendilo will use these rules before offering appointment
                         times or confirming bookings.
                     </p>
                 </div>

@@ -33,7 +33,7 @@ export const BusinessFaqs = ({
                 {sectionHeader(
                     <CircleQuestionMark className="h-5 w-5" />,
                     "FAQs",
-                    "Common questions Lumora can answer automatically."
+                    "Common questions Atendilo can answer automatically."
                 )}
             </div>
 

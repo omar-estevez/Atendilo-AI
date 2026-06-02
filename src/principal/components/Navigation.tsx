@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { useAuthStore } from "@/store/authStore"
 import { motion } from "framer-motion"
-import { Bot } from "lucide-react"
 import { Link, useNavigate } from "react-router"
 
 export const Navigation = () => {
@@ -19,10 +18,14 @@ export const Navigation = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16 lg:h-20">
                     <Link to='/' className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-linear-to-br from-primary to-accent flex items-center justify-center glow">
-                            <Bot className="w-5 h-5 text-primary-foreground" />
+                        <div className="w-8 h-8 flex items-center justify-center">
+                            <img
+                                src="/icon.png"
+                                alt="Icono"
+                                className="w-full h-full object-contain"
+                            />
                         </div>
-                        <span className="text-xl font-bold tracking-tight">Lumora</span>
+                        <span className="text-xl font-bold tracking-tight">Atendilo</span>
                     </Link>
 
                     <div className="hidden md:flex items-center gap-8">

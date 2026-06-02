@@ -255,7 +255,7 @@ export const Header = ({
     const handleRefresh = () => {
         setRefreshing(true);
 
-        window.dispatchEvent(new Event("lumora:refresh"));
+        window.dispatchEvent(new Event("Atendilo:refresh"));
 
         window.setTimeout(() => {
             setRefreshing(false);

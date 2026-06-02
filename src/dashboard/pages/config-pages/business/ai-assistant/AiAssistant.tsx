@@ -29,7 +29,7 @@ export const AiAssistant = ({
                 {sectionHeader(
                     <Brain className="h-5 w-5" />,
                     "AI Assistant",
-                    "Define how Lumora should speak, sell, book, and escalate."
+                    "Define how Atendilo should speak, sell, book, and escalate."
                 )}
             </div>
 
@@ -163,7 +163,7 @@ export const AiAssistant = ({
                                 instructions: event.target.value,
                             })
                         }
-                        placeholder="Tell Lumora how to respond to customers..."
+                        placeholder="Tell Atendilo how to respond to customers..."
                         className={`${inputClass} resize-none`}
                     />
                 </div>

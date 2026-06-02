@@ -60,7 +60,7 @@ export const defaultNotificationPreferences: NotificationPreference[] = [
     {
         id: "hot_lead",
         event: "Hot lead detected",
-        description: "When Lumora identifies a high-intent lead.",
+        description: "When Atendilo identifies a high-intent lead.",
         category: "leads",
         email: true,
         push: true,

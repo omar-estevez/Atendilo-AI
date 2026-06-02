@@ -1,15 +1,15 @@
-import { Bot, Database, Sparkles, Zap } from "lucide-react";
+import { Database, Sparkles, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 
-interface LumoraLoaderProps {
+interface AtendiloLoaderProps {
     message?: string;
     subMessage?: string | null;
 }
 
-export const LumoraLoader = ({
-    message = "Loading Lumora",
+export const AtendiloLoader = ({
+    message = "Loading Atendilo",
     subMessage = "Preparing your AI workspace...",
-}: LumoraLoaderProps) => {
+}: AtendiloLoaderProps) => {
     return (
         <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
             <div className="absolute inset-0 pointer-events-none">
@@ -47,7 +47,7 @@ export const LumoraLoader = ({
                     />
 
                     <motion.div
-                        className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-primary to-accent shadow-[0_0_45px_rgba(56,189,248,0.45)]"
+                        className="relative flex h-16 w-16 items-center justify-center rounded-2xl shadow-[0_0_45px_rgba(56,189,248,0.45)]"
                         animate={{ y: [0, -6, 0] }}
                         transition={{
                             duration: 2.4,
@@ -55,7 +55,11 @@ export const LumoraLoader = ({
                             ease: "easeInOut",
                         }}
                     >
-                        <Bot className="h-8 w-8 text-primary-foreground" />
+                        <img
+                            src="/icon.png"
+                            alt="Icono"
+                            className="w-full h-full object-contain"
+                        />
                     </motion.div>
 
                     <motion.div

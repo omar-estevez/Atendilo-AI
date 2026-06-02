@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
     AlertTriangle,
-    Bot,
     Calendar,
     CheckCircle2,
     Clock,
@@ -68,7 +67,11 @@ const getActivityIcon = (type: string) => {
         case "workflow_triggered":
             return <Workflow className="h-5 w-5 text-blue-400" />;
         default:
-            return <Bot className="h-5 w-5 text-primary" />;
+            return <img
+                src="/icon.png"
+                alt="Icono"
+                className="w-6 h-6 object-contain"
+            />;
     }
 };
 
@@ -184,7 +187,7 @@ export const ActivityPage = () => {
                         AI Activity
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Monitor how Lumora AI is handling customer actions,
+                        Monitor how Atendilo AI is handling customer actions,
                         replies, leads and workflows.
                     </p>
                 </div>
@@ -391,7 +394,11 @@ export const ActivityPage = () => {
                             </div>
                         ) : (
                             <div className="flex h-full flex-col items-center justify-center p-6 text-center">
-                                <Bot className="mb-3 h-10 w-10 text-muted-foreground" />
+                                <img
+                                    src="/icon.png"
+                                    alt="Icono"
+                                    className="w-11 h-11 object-contain"
+                                />
                                 <p className="font-medium">No activity found</p>
                                 <p className="mt-1 text-sm text-muted-foreground">
                                     Try changing your filters or search term.
@@ -514,7 +521,11 @@ export const ActivityPage = () => {
                     ) : (
                         <div className="flex h-full flex-col items-center justify-center p-8 text-center">
                             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-                                <Bot className="h-7 w-7 text-primary" />
+                                <img
+                                    src="/icon.png"
+                                    alt="Icono"
+                                    className="w-9 h-9 object-contain"
+                                />
                             </div>
 
                             <h2 className="text-xl font-semibold">

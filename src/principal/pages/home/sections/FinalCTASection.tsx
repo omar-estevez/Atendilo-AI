@@ -22,10 +22,10 @@ export const FinalCTASection = () => {
                             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-6">
                                 Ready to See
                                 <br />
-                                <span className="text-gradient">Lumora for Your Business?</span>
+                                <span className="text-gradient">Atendilo for Your Business?</span>
                             </h2>
                             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 text-pretty">
-                                Get a personalized AI preview showing how Lumora could answer leads, capture customer info, and help book appointments for your business.
+                                Get a personalized AI preview showing how Atendilo could answer leads, capture customer info, and help book appointments for your business.
                             </p>
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                                 <Button

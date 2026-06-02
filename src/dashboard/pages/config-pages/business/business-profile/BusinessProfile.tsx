@@ -27,7 +27,7 @@ export const BusinessProfile = ({
                 {sectionHeader(
                     <BriefcaseBusiness className="h-5 w-5" />,
                     "General Information",
-                    "Basic business details used by Lumora AI when speaking with customers."
+                    "Basic business details used by Atendilo AI when speaking with customers."
                 )}
             </div>
 
@@ -45,7 +45,7 @@ export const BusinessProfile = ({
                                 businessName: event.target.value,
                             })
                         }
-                        placeholder="Lumora Demo Business"
+                        placeholder="Atendilo Demo Business"
                         className={inputClass}
                     />
 
@@ -239,7 +239,7 @@ export const BusinessProfile = ({
                         AI Context Preview
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                        Lumora will use this profile to introduce the business,
+                        Atendilo will use this profile to introduce the business,
                         personalize answers, and understand service location.
                     </p>
                 </div>

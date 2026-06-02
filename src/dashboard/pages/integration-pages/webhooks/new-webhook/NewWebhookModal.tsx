@@ -125,7 +125,7 @@ export const NewWebhookModal = ({
                     <div>
                         <h2 className="text-lg font-semibold">New Webhook</h2>
                         <p className="text-sm text-muted-foreground">
-                            Send Lumora events to external systems.
+                            Send Atendilo events to external systems.
                         </p>
                     </div>
 
@@ -154,7 +154,7 @@ export const NewWebhookModal = ({
                         </p>
 
                         <p className="mt-2 text-sm text-muted-foreground">
-                            Lumora will generate a webhook secret. Later, your backend can verify the signature of every webhook request.
+                            Atendilo will generate a webhook secret. Later, your backend can verify the signature of every webhook request.
                         </p>
                     </div>
 
@@ -183,7 +183,7 @@ export const NewWebhookModal = ({
                             onChange={(event) =>
                                 setEndpointUrl(event.target.value)
                             }
-                            placeholder="https://yourdomain.com/webhooks/lumora"
+                            placeholder="https://yourdomain.com/webhooks/Atendilo"
                             className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
                         />
 

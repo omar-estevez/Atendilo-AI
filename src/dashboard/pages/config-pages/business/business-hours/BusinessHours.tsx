@@ -29,7 +29,7 @@ export const BusinessHours = ({
                 {sectionHeader(
                     <Clock className="h-5 w-5" />,
                     "Business Hours",
-                    "Set when Lumora can offer appointments or mark the business as closed."
+                    "Set when Atendilo can offer appointments or mark the business as closed."
                 )}
             </div>
 

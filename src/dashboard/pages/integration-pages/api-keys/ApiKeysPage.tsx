@@ -78,7 +78,7 @@ export const ApiKeysPage = () => {
                         API Keys
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Manage API keys for secure external access to Lumora.
+                        Manage API keys for secure external access to Atendilo.
                     </p>
                 </div>
 
@@ -328,7 +328,7 @@ export const ApiKeysPage = () => {
 
                         <div className="p-5">
                             <pre className="overflow-x-auto rounded-xl border border-border/60 bg-background/70 p-4 text-xs text-muted-foreground">
-                                {`fetch("https://api.lumora.ai/v1/messages", {
+                                {`fetch("https://api.Atendilo.ai/v1/messages", {
   method: "POST",
   headers: {
     "Authorization": "Bearer YOUR_API_KEY",

@@ -140,7 +140,7 @@ export const AcceptInvitePage = () => {
                         </h1>
 
                         <p className="mt-2 text-sm text-muted-foreground">
-                            Join a Lumora workspace and collaborate with your team.
+                            Join a Atendilo workspace and collaborate with your team.
                         </p>
                     </div>
 

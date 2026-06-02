@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Bot, FileText, MessageSquare, Tag, X } from "lucide-react";
+import { FileText, MessageSquare, Tag, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/authStore";
@@ -161,7 +161,11 @@ export const NewTemplateModal = ({
 
                     <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4">
                         <p className="flex items-center gap-2 text-sm font-semibold text-primary">
-                            <Bot className="h-4 w-4" />
+                            <img
+                                src="/icon.png"
+                                alt="Icono"
+                                className="w-4 h-4 object-contain"
+                            />
                             Template Variables
                         </p>
 

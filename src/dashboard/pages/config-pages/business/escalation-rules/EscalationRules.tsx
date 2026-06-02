@@ -64,7 +64,7 @@ export const EscalationRules = ({
                 {sectionHeader(
                     <ShieldAlert className="h-5 w-5" />,
                     "Escalation Rules",
-                    "Decide when Lumora should hand off the conversation to a human."
+                    "Decide when Atendilo should hand off the conversation to a human."
                 )}
             </div>
 

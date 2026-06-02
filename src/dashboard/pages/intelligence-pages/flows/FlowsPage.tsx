@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
     // Activity,
-    Bot,
     // CheckCircle2,
     GitBranch,
     MoreVertical,
@@ -485,7 +484,11 @@ export const FlowsPage = () => {
 
                                 <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/10 p-4">
                                     <p className="flex items-center gap-2 text-sm font-semibold text-primary">
-                                        <Bot className="h-4 w-4" />
+                                        <img
+                                            src="/icon.png"
+                                            alt="Icono"
+                                            className="w-5 h-5 object-contain"
+                                        />
                                         Flow Intelligence
                                     </p>
 
@@ -496,7 +499,7 @@ export const FlowsPage = () => {
                                                 selectedFlow.trigger_type
                                             )}
                                         </span>
-                                        . Later, Lumora will use this workflow to
+                                        . Later, Atendilo will use this workflow to
                                         automate messages, booking logic, lead
                                         scoring, and follow-up actions.
                                     </p>

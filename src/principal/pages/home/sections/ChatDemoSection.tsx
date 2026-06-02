@@ -1,5 +1,5 @@
 import { motion } from "framer-motion"
-import { MessageCircle, Check, Bot, Send } from "lucide-react"
+import { MessageCircle, Check, Send } from "lucide-react"
 
 const messages = [
     { type: "customer", text: "How much is an interior detail?" },
@@ -57,8 +57,12 @@ export const ChatDemoSection = () => {
                                     {/* Phone Header */}
                                     <div className="bg-secondary/50 px-6 py-4 border-b border-border/50">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-linear-to-br from-primary to-accent flex items-center justify-center">
-                                                <Bot className="w-5 h-5 text-primary-foreground" />
+                                            <div className="w-10 h-10 rounded-full flex items-center justify-center">
+                                                <img
+                                                    src="/icon.png"
+                                                    alt="Icono"
+                                                    className="w-full h-full object-contain"
+                                                />
                                             </div>
                                             <div>
                                                 <div className="font-semibold text-sm">AutoPro Detailing</div>

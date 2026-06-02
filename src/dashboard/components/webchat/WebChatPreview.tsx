@@ -28,7 +28,7 @@ export function WebChatPreview({ businessId }: WebChatPreviewProps) {
         {
             id: crypto.randomUUID(),
             role: "assistant",
-            content: "Hi! I’m Lumora AI. How can I help you today?",
+            content: "Hi! I’m Atendilo AI. How can I help you today?",
         },
     ]);
 
@@ -87,7 +87,7 @@ export function WebChatPreview({ businessId }: WebChatPreviewProps) {
         <div className="mx-auto flex h-[700px] max-w-3xl flex-col rounded-2xl border border-border bg-card shadow-xl">
             <div className="border-b border-border p-4">
                 <h2 className="text-xl font-semibold text-foreground">
-                    Lumora Web Chat Test
+                    Atendilo Web Chat Test
                 </h2>
                 <p className="text-sm text-muted-foreground">
                     Testing real messages with backend + Gemini AI.
@@ -156,7 +156,7 @@ export function WebChatPreview({ businessId }: WebChatPreviewProps) {
                 {isSending && (
                     <div className="flex justify-start">
                         <div className="rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">
-                            Lumora is typing...
+                            Atendilo is typing...
                         </div>
                     </div>
                 )}

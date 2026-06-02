@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { useDashboardDataStore } from "@/store/dashboard/dashboardDataStore";
 import { AnimatePresence } from "framer-motion";
-import { Activity, Bot } from "lucide-react";
+import { Activity } from "lucide-react";
 import { getActivityStatusClass, getActivityIcon, formatActivityTime } from "../helpers/ActivityMainHelpers";
 
 export const AiActivitySection = () => {
@@ -61,10 +61,14 @@ export const AiActivitySection = () => {
                         ))
                     ) : (
                         <div className="flex h-48 flex-col items-center justify-center text-center">
-                            <Bot className="mb-3 h-8 w-8 text-muted-foreground" />
+                            <img
+                                src="/icon.png"
+                                alt="Icono"
+                                className="w-8 h-8 object-contain"
+                            />
                             <p className="text-sm font-medium">No AI activity yet</p>
                             <p className="mt-1 text-xs text-muted-foreground">
-                                Lumora activity will appear here once AI starts handling conversations.
+                                Atendilo activity will appear here once AI starts handling conversations.
                             </p>
                         </div>
                     )}

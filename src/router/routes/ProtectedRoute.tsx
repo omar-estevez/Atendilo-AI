@@ -1,4 +1,4 @@
-import { LumoraLoader } from "@/shared/components/LumoraLoader";
+import { AtendiloLoader } from "@/shared/components/AtendiloLoader";
 import { useAuthStore } from "@/store/authStore";
 import { useEffect } from "react";
 import { Navigate, Outlet } from "react-router";
@@ -26,8 +26,8 @@ export const ProtectedRoute = () => {
 
     if (!isInitialized || isLoading || (isAuthenticated && !hasWorkspaceData && !error)) {
         return (
-            <LumoraLoader
-                message="Loading Lumora"
+            <AtendiloLoader
+                message="Loading Atendilo"
                 subMessage={loadingStep || "Preparing your AI workspace..."}
             />
         );

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bot, FileText, GitBranch, PlayCircle, X, Zap } from "lucide-react";
+import { FileText, GitBranch, PlayCircle, X, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/authStore";
@@ -94,7 +94,7 @@ export const NewFlowModal = ({ open, onClose }: NewFlowModalProps) => {
                     <div>
                         <h2 className="text-lg font-semibold">New AI Flow</h2>
                         <p className="text-sm text-muted-foreground">
-                            Create a workflow that Lumora AI can use to automate customer actions.
+                            Create a workflow that Atendilo AI can use to automate customer actions.
                         </p>
                     </div>
 
@@ -116,7 +116,11 @@ export const NewFlowModal = ({ open, onClose }: NewFlowModalProps) => {
 
                     <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4">
                         <p className="flex items-center gap-2 text-sm font-semibold text-primary">
-                            <Bot className="h-4 w-4" />
+                            <img
+                                src="/icon.png"
+                                alt="Icono"
+                                className="w-5 h-5 object-contain"
+                            />
                             AI Flow Setup
                         </p>
 

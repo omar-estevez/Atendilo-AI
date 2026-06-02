@@ -1,6 +1,12 @@
 import { create } from "zustand";
-import { channelsService, type Channel } from "@/services/dashboard/channelsService";
-import { contactsService, type Contact } from "@/services/dashboard/contactsService";
+import {
+    channelsService,
+    type Channel,
+} from "@/services/dashboard/channelsService";
+import {
+    contactsService,
+    type Contact,
+} from "@/services/dashboard/contactsService";
 import {
     conversationsService,
     type ConversationStatus,
@@ -17,8 +23,14 @@ import {
     aiActivityService,
     type AIActivityLog,
 } from "@/services/dashboard/aiActivityService";
-import { bookingsService, type Booking } from "@/services/dashboard/bookingsService";
-import { aiFlowsService, type AIFlow } from "@/services/dashboard/aiFlowsService";
+import {
+    bookingsService,
+    type Booking,
+} from "@/services/dashboard/bookingsService";
+import {
+    aiFlowsService,
+    type AIFlow,
+} from "@/services/dashboard/aiFlowsService";
 
 interface DashboardStats {
     totalContacts: number;
@@ -50,12 +62,16 @@ interface DashboardDataStore {
     loadContacts: () => Promise<void>;
     loadConversations: (status?: ConversationStatus) => Promise<void>;
     selectConversation: (conversationId: string) => Promise<void>;
-    sendMessage: (content: string, senderType?: MessageSenderType) => Promise<void>;
+    sendMessage: (
+        content: string,
+        senderType?: MessageSenderType
+    ) => Promise<void>;
     clearSelectedConversation: () => void;
     clearError: () => void;
     updateSelectedConversationStatus: (
         status: ConversationStatus
     ) => Promise<void>;
+    refreshSelectedConversation: () => Promise<void>;
 }
 
 const initialStats: DashboardStats = {
@@ -65,6 +81,26 @@ const initialStats: DashboardStats = {
     activeChannels: 0,
     totalMessages: 0,
 };
+
+function calculateStats(input: {
+    channels: Channel[];
+    contacts: Contact[];
+    conversations: ConversationWithRelations[];
+    latestMessagesCount: number;
+}): DashboardStats {
+    const { channels, contacts, conversations, latestMessagesCount } = input;
+
+    return {
+        totalContacts: contacts.length,
+        totalConversations: conversations.length,
+        openConversations: conversations.filter(
+            (conversation) => conversation.status === "open"
+        ).length,
+        activeChannels: channels.filter((channel) => channel.status === "active")
+            .length,
+        totalMessages: latestMessagesCount,
+    };
+}
 
 export const useDashboardDataStore = create<DashboardDataStore>((set, get) => ({
     channels: [],
@@ -106,14 +142,6 @@ export const useDashboardDataStore = create<DashboardDataStore>((set, get) => ({
                 aiFlowsService.getActiveFlows(5),
             ]);
 
-            const activeChannels = channels.filter(
-                (channel) => channel.status === "active"
-            ).length;
-
-            const openConversations = conversations.filter(
-                (conversation) => conversation.status === "open"
-            ).length;
-
             set({
                 channels,
                 contacts,
@@ -122,13 +150,12 @@ export const useDashboardDataStore = create<DashboardDataStore>((set, get) => ({
                 aiActivityLogs,
                 bookings,
                 aiFlows,
-                stats: {
-                    totalContacts: contacts.length,
-                    totalConversations: conversations.length,
-                    openConversations,
-                    activeChannels,
-                    totalMessages: latestMessages.length,
-                },
+                stats: calculateStats({
+                    channels,
+                    contacts,
+                    conversations,
+                    latestMessagesCount: latestMessages.length,
+                }),
                 isLoading: false,
             });
         } catch (error) {
@@ -193,8 +220,18 @@ export const useDashboardDataStore = create<DashboardDataStore>((set, get) => ({
                 limit: 50,
             });
 
+            const selectedConversation = get().selectedConversation;
+
+            const updatedSelectedConversation = selectedConversation
+                ? conversations.find(
+                    (conversation) =>
+                        conversation.id === selectedConversation.id
+                ) || selectedConversation
+                : null;
+
             set({
                 conversations,
+                selectedConversation: updatedSelectedConversation,
                 isLoading: false,
             });
         } catch (error) {
@@ -246,6 +283,12 @@ export const useDashboardDataStore = create<DashboardDataStore>((set, get) => ({
                 throw new Error("No conversation selected");
             }
 
+            if (selectedConversation.status !== "pending") {
+                throw new Error(
+                    "AI is currently handling this conversation. Move it to Pending to reply as an agent."
+                );
+            }
+
             if (!business) {
                 throw new Error("No business found");
             }
@@ -258,25 +301,28 @@ export const useDashboardDataStore = create<DashboardDataStore>((set, get) => ({
                 content,
             });
 
+            const updatedSelectedConversation = {
+                ...selectedConversation,
+                last_message_at: newMessage.created_at,
+                messages: [
+                    ...(selectedConversation.messages || []),
+                    {
+                        id: newMessage.id,
+                        content: newMessage.content,
+                        sender_type: newMessage.sender_type,
+                        created_at: newMessage.created_at,
+                    },
+                ],
+            };
+
             set({
+                selectedConversation: updatedSelectedConversation,
                 messages: [...get().messages, newMessage],
                 conversations: get()
                     .conversations
                     .map((conversation) =>
                         conversation.id === selectedConversation.id
-                            ? {
-                                ...conversation,
-                                last_message_at: newMessage.created_at,
-                                messages: [
-                                    ...(conversation.messages || []),
-                                    {
-                                        id: newMessage.id,
-                                        content: newMessage.content,
-                                        sender_type: newMessage.sender_type,
-                                        created_at: newMessage.created_at,
-                                    },
-                                ],
-                            }
+                            ? updatedSelectedConversation
                             : conversation
                     )
                     .sort((a, b) => {
@@ -345,6 +391,47 @@ export const useDashboardDataStore = create<DashboardDataStore>((set, get) => ({
             });
 
             throw error;
+        }
+    },
+
+    refreshSelectedConversation: async () => {
+        try {
+            const selectedConversation = get().selectedConversation;
+
+            if (!selectedConversation) return;
+
+            const [conversation, messages] = await Promise.all([
+                conversationsService.getConversationById(selectedConversation.id),
+                messagesService.getMessagesByConversation(selectedConversation.id),
+            ]);
+
+            set({
+                selectedConversation: conversation,
+                messages,
+                conversations: get()
+                    .conversations
+                    .map((item) =>
+                        item.id === conversation.id ? conversation : item
+                    )
+                    .sort((a, b) => {
+                        const dateA = a.last_message_at
+                            ? new Date(a.last_message_at).getTime()
+                            : 0;
+
+                        const dateB = b.last_message_at
+                            ? new Date(b.last_message_at).getTime()
+                            : 0;
+
+                        return dateB - dateA;
+                    }),
+            });
+        } catch (error) {
+            set({
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to refresh conversation",
+            });
         }
     },
 }));

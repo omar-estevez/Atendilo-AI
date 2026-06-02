@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useParams } from "react-router";
 import { useAuthStore } from "@/store/authStore";
-import { LumoraLoader } from "@/shared/components/LumoraLoader";
+import { AtendiloLoader } from "@/shared/components/AtendiloLoader";
 
 const allowedChannels = ["whatsapp", "sms", "webchat", "email"];
 
@@ -16,7 +16,7 @@ export const ChannelModuleRoute = () => {
 
     if (!isInitialized) {
         return (
-            <LumoraLoader
+            <AtendiloLoader
                 message="Initializing AI workspace"
                 subMessage="Checking your session, subscription and active modules..."
             />

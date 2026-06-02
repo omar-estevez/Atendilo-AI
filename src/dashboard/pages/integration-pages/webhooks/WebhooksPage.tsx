@@ -92,7 +92,7 @@ export const WebhooksPage = () => {
                         Webhooks
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Send Lumora events to external apps, CRMs, automations and backend services.
+                        Send Atendilo events to external apps, CRMs, automations and backend services.
                     </p>
                 </div>
 
@@ -263,7 +263,7 @@ export const WebhooksPage = () => {
                                     No webhooks yet
                                 </p>
                                 <p className="mt-1 text-sm text-muted-foreground">
-                                    Create your first webhook endpoint to send Lumora events externally.
+                                    Create your first webhook endpoint to send Atendilo events externally.
                                 </p>
                             </div>
                         )}

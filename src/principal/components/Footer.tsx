@@ -1,4 +1,3 @@
-import { Bot } from "lucide-react"
 import { Link } from "react-router"
 
 export const Footer = () => {
@@ -8,10 +7,14 @@ export const Footer = () => {
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-12 mb-12">
                     <div className="col-span-2">
                         <Link to='/' className="flex items-center gap-2 mb-4">
-                            <div className="w-8 h-8 rounded-lg bg-linear-to-br from-primary to-accent flex items-center justify-center">
-                                <Bot className="w-5 h-5 text-primary-foreground" />
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                                <img
+                                    src="/icon.png"
+                                    alt="Icono"
+                                    className="w-full h-full object-contain"
+                                />
                             </div>
-                            <span className="text-xl font-bold tracking-tight">Lumora</span>
+                            <span className="text-xl font-bold tracking-tight">Atendilo</span>
                         </Link>
                         <p className="text-sm text-muted-foreground max-w-xs mb-6">
                             AI-powered receptionist for local businesses. Never miss a customer again.
@@ -67,7 +70,7 @@ export const Footer = () => {
 
                 <div className="pt-8 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <p className="text-sm text-muted-foreground">
-                        © 2026 Lumora AI. All rights reserved.
+                        © 2026 Atendilo AI. All rights reserved.
                     </p>
                     <p className="text-sm text-muted-foreground">
                         Omar E developer

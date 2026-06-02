@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuthStore } from "@/store/authStore";
-import { LumoraLoader } from "@/shared/components/LumoraLoader";
+import { AtendiloLoader } from "@/shared/components/AtendiloLoader";
 
 export const AuthCallbackPage = () => {
     const navigate = useNavigate();
@@ -20,7 +20,7 @@ export const AuthCallbackPage = () => {
         runCallback();
     }, [handleAuthCallback, navigate]);
 
-    return <LumoraLoader />;
+    return <AtendiloLoader />;
 };
 
 export default AuthCallbackPage;

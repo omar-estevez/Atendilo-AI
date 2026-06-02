@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-    Bot,
     CheckCircle2,
     Clock,
     FileText,
@@ -402,7 +401,11 @@ export const VoiceAIPage = () => {
                                 {selectedCall.ai_summary && (
                                     <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4">
                                         <p className="flex items-center gap-2 text-sm font-semibold text-primary">
-                                            <Bot className="h-4 w-4" />
+                                            <img
+                                                src="/icon.png"
+                                                alt="Icono"
+                                                className="w-4 h-4 object-contain"
+                                            />
                                             AI Summary
                                         </p>
                                         <p className="mt-2 text-sm text-muted-foreground">

@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { LumoraLoader } from '@/shared/components/LumoraLoader';
+import { AtendiloLoader } from '@/shared/components/AtendiloLoader';
 import { useAuthStore } from '@/store/authStore';
 import { motion } from 'framer-motion';
 import { Sparkles, Check, Mail, EyeOff, Eye, ArrowRight, Lock } from 'lucide-react';
@@ -40,7 +40,7 @@ export const LoginPage = () => {
 
     if (isLoading) {
         return (
-            <LumoraLoader
+            <AtendiloLoader
                 message="Signing in"
                 subMessage={loadingStep || "Preparing your AI workspace..."}
             />
@@ -73,7 +73,7 @@ export const LoginPage = () => {
                                 <Sparkles className="w-6 h-6 text-white" />
                             </div>
                             <span className="text-2xl font-bold text-foreground">
-                                Lumora
+                                Atendilo
                             </span>
                         </Link>
 
@@ -127,7 +127,7 @@ export const LoginPage = () => {
                         <div className="relative w-10 h-10 rounded-xl bg-linear-to-r from-primary to-accent flex items-center justify-center">
                             <Sparkles className="w-5 h-5 text-white" />
                         </div>
-                        <span className="text-xl font-bold text-foreground">Lumora</span>
+                        <span className="text-xl font-bold text-foreground">Atendilo</span>
                     </Link>
 
                     {/* Form Header */}

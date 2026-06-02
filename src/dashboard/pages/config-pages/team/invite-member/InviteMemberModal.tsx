@@ -107,7 +107,7 @@ export const InviteMemberModal = ({
                             Invite Team Member
                         </h2>
                         <p className="text-sm text-muted-foreground">
-                            Send an invitation link to join this Lumora workspace.
+                            Send an invitation link to join this Atendilo workspace.
                         </p>
                     </div>
 

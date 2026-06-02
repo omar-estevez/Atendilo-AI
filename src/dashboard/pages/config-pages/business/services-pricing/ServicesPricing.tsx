@@ -94,7 +94,7 @@ export const ServicesPricing = ({
                         <Toolbox className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
                         <p className="font-medium">No services yet</p>
                         <p className="mt-1 text-sm text-muted-foreground">
-                            Add at least one service so Lumora can quote customers.
+                            Add at least one service so Atendilo can quote customers.
                         </p>
                     </div>
                 )}

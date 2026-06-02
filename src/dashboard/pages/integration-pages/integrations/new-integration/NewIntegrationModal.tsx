@@ -162,7 +162,7 @@ export const NewIntegrationModal = ({
                             New Integration
                         </h2>
                         <p className="text-sm text-muted-foreground">
-                            Add an external provider connection to Lumora.
+                            Add an external provider connection to Atendilo.
                         </p>
                     </div>
 

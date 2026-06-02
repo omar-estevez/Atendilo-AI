@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import {
     Activity,
     BarChart3,
-    Bot,
     CalendarCheck,
     CheckCircle2,
     DollarSign,
@@ -125,7 +124,11 @@ export const AnalyticsPage = () => {
 
                 <Card className="border-border/50 bg-card/60 p-5">
                     <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/15">
-                        <Bot className="h-5 w-5 text-blue-400" />
+                        <img
+                            src="/icon.png"
+                            alt="Icono"
+                            className="w-6 h-6 object-contain"
+                        />
                     </div>
                     <p className="text-sm text-muted-foreground">
                         AI Automation

@@ -143,7 +143,7 @@ export const BillingPage = () => {
                 <div>
                     <h2 className="text-2xl font-bold">Billing</h2>
                     <p className="text-sm text-muted-foreground">
-                        Manage your Lumora plan, usage, payment method and billing history.
+                        Manage your Atendilo plan, usage, payment method and billing history.
                     </p>
                 </div>
 

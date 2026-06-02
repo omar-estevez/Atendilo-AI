@@ -62,7 +62,7 @@ You may request the deletion of your account and associated data at any time.`,
 - Object to the processing of your data.
 - Withdraw consent at any time.
 
-To exercise these rights, please contact us at privacy@lumoraai.com.`,
+To exercise these rights, please contact us at privacy@Atendiloai.com.`,
     },
     {
         title: "7. Cookies and Tracking Technologies",
@@ -91,7 +91,7 @@ You can control cookies through your browser settings. Please note that disablin
         title: "11. Contact",
         content: `If you have questions about this Privacy Policy, please contact us:
 
-- Email: privacy@lumoraai.com
+- Email: privacy@Atendiloai.com
 - Address: 123 AI Street, Suite 100, San Francisco, CA 94105
 - Phone: +1 (555) 123-4567`,
     },
@@ -135,7 +135,7 @@ export const PrivacyPage = () => {
                         className="glass p-6 lg:p-8 rounded-2xl mb-8"
                     >
                         <p className="text-muted-foreground leading-relaxed">
-                            At Lumora AI (&quot;we&quot;, &quot;our&quot;, or &quot;the Company&quot;), we are committed to protecting
+                            At Atendilo AI (&quot;we&quot;, &quot;our&quot;, or &quot;the Company&quot;), we are committed to protecting
                             your privacy. This Privacy Policy explains how we collect, use,
                             disclose, and protect your information when you use our artificial
                             intelligence receptionist services.

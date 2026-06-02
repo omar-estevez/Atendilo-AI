@@ -211,7 +211,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
                 user: data.user,
                 isAuthenticated: true,
                 isInitialized: true,
-                loadingStep: "Opening your Lumora workspace...",
+                loadingStep: "Opening your Atendilo workspace...",
             });
 
             await sleep(LOADING_STEP_DELAY);
@@ -267,7 +267,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             set({
                 isLoading: true,
                 error: null,
-                loadingStep: "Creating your Lumora account...",
+                loadingStep: "Creating your Atendilo account...",
             });
 
             const { data, error } = await supabase.auth.signUp({
@@ -691,7 +691,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
                 user: session.user,
                 isAuthenticated: true,
                 isInitialized: true,
-                loadingStep: "Loading your Lumora workspace...",
+                loadingStep: "Loading your Atendilo workspace...",
             });
 
             try {

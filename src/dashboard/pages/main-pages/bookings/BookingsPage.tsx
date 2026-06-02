@@ -12,7 +12,6 @@ import {
     XCircle,
     CalendarDays,
     // AlertTriangle,
-    Bot,
     User,
     MessageSquare,
 } from "lucide-react";
@@ -514,14 +513,18 @@ export const BookingsPage = () => {
 
                                 <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/10 p-4">
                                     <p className="flex items-center gap-2 text-sm font-semibold text-primary">
-                                        <Bot className="h-4 w-4" />
+                                        <img
+                                            src="/icon.png"
+                                            alt="Icono"
+                                            className="w-5 h-5 object-contain"
+                                        />
                                         Booking Intelligence
                                     </p>
 
                                     <p className="mt-2 text-sm text-muted-foreground">
                                         This booking was created from{" "}
                                         {selectedBooking.source || "manual"} workflow.
-                                        Later, Lumora AI can suggest follow-ups,
+                                        Later, Atendilo AI can suggest follow-ups,
                                         reminders, rescheduling options, and
                                         calendar sync actions.
                                     </p>

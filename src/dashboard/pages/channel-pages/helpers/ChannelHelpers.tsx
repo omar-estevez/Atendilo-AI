@@ -90,7 +90,7 @@ export const getDefaultConfig = (type: ChannelType) => {
             };
         case "webchat":
             return {
-                widget_title: "Lumora AI Assistant",
+                widget_title: "Atendilo AI Assistant",
                 welcome_message: "Hi! How can I help you today?",
                 primary_color: "#38bdf8",
                 capture_leads: true,

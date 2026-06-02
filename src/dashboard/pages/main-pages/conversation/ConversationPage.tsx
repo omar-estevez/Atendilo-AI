@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
-    Bot,
     CheckCircle2,
     Circle,
     Clock,
@@ -18,13 +17,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useDashboardDataStore } from "@/store/dashboard/dashboardDataStore";
 import type { ConversationStatus } from "@/services/dashboard/conversationsService";
-import ConversationFiltersPanel, { defaultConversationAdvancedFilters, type ConversationAdvancedFilters } from "./filter-panel/ConversationFiltersPanel";
+import ConversationFiltersPanel, {
+    defaultConversationAdvancedFilters,
+    type ConversationAdvancedFilters,
+} from "./filter-panel/ConversationFiltersPanel";
 import { useSearchParams } from "react-router";
-import { getInitials, getChannelIcon, formatDate, getStatusClass, getUrgencyClass, formatLabel, getScoreClass } from "./helpers/ConverstionHelpers";
 import { useAuthStore } from "@/store/authStore";
+import { safeText, getInitialsSafe, getChannelIconSafe, formatDateSafe, getStatusClassSafe, getUrgencyClassSafe, formatLabelSafe, getScoreClassSafe } from "./helpers/ConverstionHelpers";
 
 export const ConversationPage = () => {
-
     const [searchParams] = useSearchParams();
     const conversationIdFromUrl = searchParams.get("conversationId");
 
@@ -39,6 +40,7 @@ export const ConversationPage = () => {
         selectConversation,
         sendMessage,
         updateSelectedConversationStatus,
+        refreshSelectedConversation
     } = useDashboardDataStore();
 
     const { hasPermission } = useAuthStore();
@@ -46,15 +48,30 @@ export const ConversationPage = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [messageInput, setMessageInput] = useState("");
     const [isSending, setIsSending] = useState(false);
-
-    const [filtersOpen, setFiltersOpen] = useState(false)
+    const [filtersOpen, setFiltersOpen] = useState(false);
     const [advancedFilters, setAdvancedFilters] =
         useState<ConversationAdvancedFilters>(
             defaultConversationAdvancedFilters
-        )
+        );
 
     const canReply = hasPermission("conversations.reply");
     const canUpdateStatus = hasPermission("conversations.assign");
+
+    const selectedStatus = safeText(selectedConversation?.status, "open");
+
+    const isPendingConversation = selectedStatus === "pending";
+    const isClosedConversation = selectedStatus === "closed";
+
+    const canSendAgentMessage =
+        canReply && Boolean(selectedConversation) && isPendingConversation;
+
+    const replyPlaceholder = !canReply
+        ? "View-only access. You cannot reply."
+        : isClosedConversation
+            ? "This conversation is closed."
+            : !isPendingConversation
+                ? "AI is handling this conversation. Move it to Pending to reply."
+                : "Write a reply...";
 
     useEffect(() => {
         loadConversations();
@@ -87,56 +104,73 @@ export const ConversationPage = () => {
         selectConversation,
     ]);
 
+    useEffect(() => {
+        const interval = window.setInterval(() => {
+            loadConversations();
+            refreshSelectedConversation();
+        }, 3000);
+
+        return () => {
+            window.clearInterval(interval);
+        };
+    }, [loadConversations, refreshSelectedConversation]);
+
     const getLastMessage = (
-        messages?: {
+        list?: {
             id: string;
-            content: string;
+            content: unknown;
             sender_type: string;
             created_at: string;
         }[]
     ) => {
-        if (!messages || messages.length === 0) {
+        if (!list || list.length === 0) {
             return "No messages yet";
         }
 
-        const sortedMessages = [...messages].sort(
+        const sortedMessages = [...list].sort(
             (a, b) =>
                 new Date(b.created_at).getTime() -
                 new Date(a.created_at).getTime()
         );
 
-        return sortedMessages[0].content;
+        return safeText(sortedMessages[0]?.content, "No message content");
     };
 
     const filteredConversations = useMemo(() => {
         return conversations.filter((conversation) => {
-            const contactName = conversation.contacts?.full_name || ""
-            const contactEmail = conversation.contacts?.email || ""
-            const contactPhone = conversation.contacts?.phone || ""
+            const contactName = safeText(conversation.contacts?.full_name);
+            const contactEmail = safeText(conversation.contacts?.email);
+            const contactPhone = safeText(conversation.contacts?.phone);
+            const conversationStatus = safeText(conversation.status);
+            const channelType = safeText(conversation.channels?.type);
+            const sentiment = safeText(conversation.sentiment);
+            const urgency = safeText(conversation.urgency);
+            const aiScore = Number(conversation.ai_score || 0);
+
+            const search = searchTerm.toLowerCase();
 
             const matchesSearch =
-                contactName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                contactEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                contactPhone.toLowerCase().includes(searchTerm.toLowerCase())
+                contactName.toLowerCase().includes(search) ||
+                contactEmail.toLowerCase().includes(search) ||
+                contactPhone.toLowerCase().includes(search);
 
             const matchesStatus =
                 advancedFilters.status === "all" ||
-                conversation.status === advancedFilters.status
+                conversationStatus === advancedFilters.status;
 
             const matchesChannel =
                 advancedFilters.channel === "all" ||
-                conversation.channels?.type === advancedFilters.channel
+                channelType === advancedFilters.channel;
 
             const matchesSentiment =
                 advancedFilters.sentiment === "all" ||
-                conversation.sentiment === advancedFilters.sentiment
+                sentiment === advancedFilters.sentiment;
 
             const matchesUrgency =
                 advancedFilters.urgency === "all" ||
-                conversation.urgency === advancedFilters.urgency
+                urgency === advancedFilters.urgency;
 
-            const matchesAiScore =
-                (conversation.ai_score || 0) >= advancedFilters.minAiScore
+            const matchesAiScore = aiScore >= advancedFilters.minAiScore;
 
             return (
                 matchesSearch &&
@@ -145,16 +179,16 @@ export const ConversationPage = () => {
                 matchesSentiment &&
                 matchesUrgency &&
                 matchesAiScore
-            )
-        })
-    }, [conversations, searchTerm, advancedFilters])
+            );
+        });
+    }, [conversations, searchTerm, advancedFilters]);
 
     const handleSelectConversation = async (conversationId: string) => {
         await selectConversation(conversationId);
     };
 
     const handleSendMessage = async () => {
-        if (!canReply) return;
+        if (!canSendAgentMessage) return;
         if (!messageInput.trim()) return;
 
         try {
@@ -173,7 +207,8 @@ export const ConversationPage = () => {
     };
 
     const selectedContactName =
-        selectedConversation?.contacts?.full_name || "Select a conversation";
+        safeText(selectedConversation?.contacts?.full_name) ||
+        "Select a conversation";
 
     return (
         <div className="h-full px-5 py-6 sm:px-7 lg:px-8">
@@ -183,7 +218,8 @@ export const ConversationPage = () => {
                         Conversations
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Manage customer conversations across your active channels.
+                        Manage customer conversations across your active
+                        channels.
                     </p>
                 </div>
 
@@ -193,7 +229,8 @@ export const ConversationPage = () => {
                     disabled={isLoading}
                 >
                     <RefreshCw
-                        className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                        className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""
+                            }`}
                     />
                     Refresh
                 </Button>
@@ -201,12 +238,13 @@ export const ConversationPage = () => {
 
             {error && (
                 <Card className="mb-4 border-red-500/30 bg-red-500/10 p-4">
-                    <p className="text-sm text-red-400">{error}</p>
+                    <p className="text-sm text-red-400">
+                        {safeText(error, "Unexpected error")}
+                    </p>
                 </Card>
             )}
 
             <div className="grid h-[calc(100vh-190px)] min-h-[620px] grid-cols-1 gap-5 xl:grid-cols-[460px_1fr]">
-                {/* Conversations List */}
                 <Card className="flex min-h-0 flex-col overflow-hidden border-border/50">
                     <div className="flex gap-2 p-2">
                         <div className="relative flex-1">
@@ -214,7 +252,9 @@ export const ConversationPage = () => {
 
                             <input
                                 value={searchTerm}
-                                onChange={(event) => setSearchTerm(event.target.value)}
+                                onChange={(event) =>
+                                    setSearchTerm(event.target.value)
+                                }
                                 placeholder="Search conversations..."
                                 className="h-10 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
                             />
@@ -222,7 +262,9 @@ export const ConversationPage = () => {
 
                         <Button
                             variant={filtersOpen ? "default" : "outline"}
-                            onClick={() => setFiltersOpen((current) => !current)}
+                            onClick={() =>
+                                setFiltersOpen((current) => !current)
+                            }
                         >
                             <SlidersHorizontal className="mr-2 h-4 w-4" />
                             Filters
@@ -235,7 +277,9 @@ export const ConversationPage = () => {
                             filters={advancedFilters}
                             onChange={setAdvancedFilters}
                             onReset={() =>
-                                setAdvancedFilters(defaultConversationAdvancedFilters)
+                                setAdvancedFilters(
+                                    defaultConversationAdvancedFilters
+                                )
                             }
                         />
                     </div>
@@ -249,119 +293,159 @@ export const ConversationPage = () => {
                             </div>
                         ) : filteredConversations.length > 0 ? (
                             <div className="divide-y divide-border/50">
-                                {filteredConversations.map((conversation, index) => {
-                                    const contactName =
-                                        conversation.contacts?.full_name ||
-                                        "Unknown Contact";
+                                {filteredConversations.map(
+                                    (conversation, index) => {
+                                        const contactName =
+                                            safeText(
+                                                conversation.contacts?.full_name
+                                            ) || "Unknown Contact";
 
-                                    const isSelected =
-                                        selectedConversation?.id ===
-                                        conversation.id;
+                                        const status = safeText(
+                                            conversation.status,
+                                            "open"
+                                        );
 
-                                    return (
-                                        <motion.button
-                                            key={conversation.id}
-                                            initial={{ opacity: 0, y: 8 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: index * 0.03 }}
-                                            onClick={() =>
-                                                handleSelectConversation(
-                                                    conversation.id
-                                                )
-                                            }
-                                            className={[
-                                                "w-full p-4 text-left transition-colors",
-                                                isSelected
-                                                    ? "bg-primary/10"
-                                                    : "hover:bg-secondary/40",
-                                            ].join(" ")}
-                                        >
-                                            <div className="flex gap-3">
-                                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary">
-                                                    {getInitials(contactName)}
-                                                </div>
+                                        const channelName =
+                                            safeText(
+                                                conversation.channels?.name
+                                            ) || "No channel";
 
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex items-start justify-between gap-2">
-                                                        <div className="min-w-0">
-                                                            <p className="truncate font-semibold">
-                                                                {contactName}
-                                                            </p>
+                                        const channelType = safeText(
+                                            conversation.channels?.type
+                                        );
 
-                                                            <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                                {getChannelIcon(
-                                                                    conversation
-                                                                        .channels
-                                                                        ?.type
-                                                                )}
-                                                                <span>
-                                                                    {conversation
-                                                                        .channels
-                                                                        ?.name ||
-                                                                        "No channel"}
-                                                                </span>
-                                                            </div>
-                                                        </div>
+                                        const isSelected =
+                                            selectedConversation?.id ===
+                                            conversation.id;
 
-                                                        <span className="shrink-0 text-xs text-muted-foreground">
-                                                            {formatDate(
-                                                                conversation.last_message_at
-                                                            )}
-                                                        </span>
+                                        return (
+                                            <motion.button
+                                                key={conversation.id}
+                                                initial={{
+                                                    opacity: 0,
+                                                    y: 8,
+                                                }}
+                                                animate={{
+                                                    opacity: 1,
+                                                    y: 0,
+                                                }}
+                                                transition={{
+                                                    delay: index * 0.03,
+                                                }}
+                                                onClick={() =>
+                                                    handleSelectConversation(
+                                                        conversation.id
+                                                    )
+                                                }
+                                                className={[
+                                                    "w-full p-4 text-left transition-colors",
+                                                    isSelected
+                                                        ? "bg-primary/10"
+                                                        : "hover:bg-secondary/40",
+                                                ].join(" ")}
+                                            >
+                                                <div className="flex gap-3">
+                                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary">
+                                                        {getInitialsSafe(
+                                                            contactName
+                                                        )}
                                                     </div>
 
-                                                    <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                                                        {getLastMessage(conversation.messages)}
-                                                    </p>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div className="min-w-0">
+                                                                <p className="truncate font-semibold">
+                                                                    {
+                                                                        contactName
+                                                                    }
+                                                                </p>
 
-                                                    <div className="mt-3 flex flex-wrap gap-1.5">
-                                                        <span
-                                                            className={`rounded-full border px-2 py-0.5 text-[11px] capitalize ${getStatusClass(
-                                                                conversation.status
-                                                            )}`}
-                                                        >
-                                                            {conversation.status}
-                                                        </span>
+                                                                <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                                    {getChannelIconSafe(
+                                                                        channelType
+                                                                    )}
+                                                                    <span>
+                                                                        {
+                                                                            channelName
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                            </div>
 
-                                                        {conversation.urgency && (
-                                                            <span
-                                                                className={`rounded-full border px-2 py-0.5 text-[11px] ${getUrgencyClass(
-                                                                    conversation.urgency
-                                                                )}`}
-                                                            >
-                                                                {formatLabel(
-                                                                    conversation.urgency
+                                                            <span className="shrink-0 text-xs text-muted-foreground">
+                                                                {formatDateSafe(
+                                                                    conversation.last_message_at
                                                                 )}
                                                             </span>
-                                                        )}
+                                                        </div>
 
-                                                        {conversation.ai_score !==
-                                                            null &&
-                                                            conversation.ai_score !==
-                                                            undefined && (
-                                                                <span
-                                                                    className={`rounded-full border px-2 py-0.5 text-[11px] ${getScoreClass(
-                                                                        conversation.ai_score
-                                                                    )}`}
-                                                                >
-                                                                    Score{" "}
-                                                                    {
-                                                                        conversation.ai_score
-                                                                    }
-                                                                    %
-                                                                </span>
+                                                        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                                                            {getLastMessage(
+                                                                conversation.messages
                                                             )}
+                                                        </p>
+
+                                                        <div className="mt-3 flex flex-wrap gap-1.5">
+                                                            <span
+                                                                className={`rounded-full border px-2 py-0.5 text-[11px] capitalize ${getStatusClassSafe(
+                                                                    status
+                                                                )}`}
+                                                            >
+                                                                {status}
+                                                            </span>
+
+                                                            {status ===
+                                                                "pending" && (
+                                                                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-300">
+                                                                        Needs agent
+                                                                    </span>
+                                                                )}
+
+                                                            {safeText(
+                                                                conversation.urgency
+                                                            ) && (
+                                                                    <span
+                                                                        className={`rounded-full border px-2 py-0.5 text-[11px] ${getUrgencyClassSafe(
+                                                                            conversation.urgency
+                                                                        )}`}
+                                                                    >
+                                                                        {formatLabelSafe(
+                                                                            conversation.urgency
+                                                                        )}
+                                                                    </span>
+                                                                )}
+
+                                                            {conversation.ai_score !==
+                                                                null &&
+                                                                conversation.ai_score !==
+                                                                undefined && (
+                                                                    <span
+                                                                        className={`rounded-full border px-2 py-0.5 text-[11px] ${getScoreClassSafe(
+                                                                            conversation.ai_score
+                                                                        )}`}
+                                                                    >
+                                                                        Score{" "}
+                                                                        {Number(
+                                                                            conversation.ai_score ||
+                                                                            0
+                                                                        )}
+                                                                        %
+                                                                    </span>
+                                                                )}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </motion.button>
-                                    );
-                                })}
+                                            </motion.button>
+                                        );
+                                    }
+                                )}
                             </div>
                         ) : (
                             <div className="flex h-full flex-col items-center justify-center p-6 text-center">
                                 <Inbox className="mb-3 h-10 w-10 text-muted-foreground" />
-                                <p className="font-medium">No conversations found</p>
+                                <p className="font-medium">
+                                    No conversations found
+                                </p>
                                 <p className="mt-1 text-sm text-muted-foreground">
                                     Try another search or status filter.
                                 </p>
@@ -370,7 +454,6 @@ export const ConversationPage = () => {
                     </div>
                 </Card>
 
-                {/* Conversation Detail */}
                 <Card className="flex min-h-0 flex-col overflow-hidden border-border/50">
                     {selectedConversation ? (
                         <>
@@ -378,7 +461,9 @@ export const ConversationPage = () => {
                                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                     <div className="flex items-start gap-3">
                                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary">
-                                            {getInitials(selectedContactName)}
+                                            {getInitialsSafe(
+                                                selectedContactName
+                                            )}
                                         </div>
 
                                         <div>
@@ -388,36 +473,51 @@ export const ConversationPage = () => {
                                                 </h2>
 
                                                 <span
-                                                    className={`rounded-full border px-2.5 py-1 text-xs capitalize ${getStatusClass(
-                                                        selectedConversation.status
+                                                    className={`rounded-full border px-2.5 py-1 text-xs capitalize ${getStatusClassSafe(
+                                                        selectedStatus
                                                     )}`}
                                                 >
-                                                    {selectedConversation.status}
+                                                    {selectedStatus}
                                                 </span>
                                             </div>
 
                                             <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                                                <span>
-                                                    {
-                                                        selectedConversation
-                                                            .contacts?.email
-                                                    }
-                                                </span>
-                                                <span>
-                                                    {
-                                                        selectedConversation
-                                                            .contacts?.phone
-                                                    }
-                                                </span>
+                                                {safeText(
+                                                    selectedConversation
+                                                        .contacts?.email
+                                                ) && (
+                                                        <span>
+                                                            {safeText(
+                                                                selectedConversation
+                                                                    .contacts
+                                                                    ?.email
+                                                            )}
+                                                        </span>
+                                                    )}
+
+                                                {safeText(
+                                                    selectedConversation
+                                                        .contacts?.phone
+                                                ) && (
+                                                        <span>
+                                                            {safeText(
+                                                                selectedConversation
+                                                                    .contacts
+                                                                    ?.phone
+                                                            )}
+                                                        </span>
+                                                    )}
+
                                                 <span className="flex items-center gap-1">
-                                                    {getChannelIcon(
+                                                    {getChannelIconSafe(
                                                         selectedConversation
                                                             .channels?.type
                                                     )}
-                                                    {
+                                                    {safeText(
                                                         selectedConversation
-                                                            .channels?.name
-                                                    }
+                                                            .channels?.name,
+                                                        "No channel"
+                                                    )}
                                                 </span>
                                             </div>
                                         </div>
@@ -468,7 +568,7 @@ export const ConversationPage = () => {
                                             Intent
                                         </p>
                                         <p className="mt-1 text-sm font-medium">
-                                            {formatLabel(
+                                            {formatLabelSafe(
                                                 selectedConversation.intent
                                             )}
                                         </p>
@@ -479,7 +579,7 @@ export const ConversationPage = () => {
                                             Urgency
                                         </p>
                                         <p className="mt-1 text-sm font-medium">
-                                            {formatLabel(
+                                            {formatLabelSafe(
                                                 selectedConversation.urgency
                                             )}
                                         </p>
@@ -490,7 +590,7 @@ export const ConversationPage = () => {
                                             Sentiment
                                         </p>
                                         <p className="mt-1 text-sm font-medium">
-                                            {formatLabel(
+                                            {formatLabelSafe(
                                                 selectedConversation.sentiment
                                             )}
                                         </p>
@@ -501,20 +601,30 @@ export const ConversationPage = () => {
                                             AI Score
                                         </p>
                                         <p className="mt-1 text-sm font-medium">
-                                            {selectedConversation.ai_score ?? 0}%
+                                            {Number(
+                                                selectedConversation.ai_score ||
+                                                0
+                                            )}
+                                            %
                                         </p>
                                     </div>
                                 </div>
 
                                 <div className="mt-4 rounded-xl border border-primary/20 bg-primary/10 p-3">
                                     <p className="flex items-center gap-2 text-xs font-medium text-primary">
-                                        <Bot className="h-3.5 w-3.5" />
+                                        <img
+                                            src="/icon.png"
+                                            alt="AI"
+                                            className="h-4 w-4 object-contain"
+                                        />
                                         AI Summary
                                     </p>
 
                                     <p className="mt-1 text-sm text-muted-foreground">
-                                        {selectedConversation.ai_summary ||
-                                            "No AI summary available yet."}
+                                        {safeText(
+                                            selectedConversation.ai_summary,
+                                            "No AI summary available yet."
+                                        )}
                                     </p>
                                 </div>
                             </div>
@@ -529,19 +639,24 @@ export const ConversationPage = () => {
                                 ) : messages.length > 0 ? (
                                     <div className="space-y-4">
                                         {messages.map((message) => {
+                                            const senderType = safeText(
+                                                message.sender_type
+                                            );
+
                                             const isAgent =
-                                                message.sender_type === "agent";
-                                            const isAi =
-                                                message.sender_type === "ai";
+                                                senderType === "agent";
+                                            const isAi = senderType === "ai";
+                                            const isCustomer =
+                                                senderType === "contact";
 
                                             return (
                                                 <div
                                                     key={message.id}
                                                     className={[
                                                         "flex",
-                                                        isAgent || isAi
-                                                            ? "justify-end"
-                                                            : "justify-start",
+                                                        isCustomer
+                                                            ? "justify-start"
+                                                            : "justify-end",
                                                     ].join(" ")}
                                                 >
                                                     <div
@@ -556,30 +671,34 @@ export const ConversationPage = () => {
                                                     >
                                                         <div className="mb-1 flex items-center gap-2">
                                                             {isAi ? (
-                                                                <Bot className="h-3.5 w-3.5 text-primary" />
-                                                            ) : isAgent ? (
-                                                                <User className="h-3.5 w-3.5 text-blue-400" />
+                                                                <img
+                                                                    src="/icon.png"
+                                                                    alt="AI"
+                                                                    className="h-4 w-4 object-contain"
+                                                                />
                                                             ) : (
                                                                 <User className="h-3.5 w-3.5 text-muted-foreground" />
                                                             )}
 
                                                             <span className="text-xs capitalize text-muted-foreground">
                                                                 {isAi
-                                                                    ? "Lumora AI"
+                                                                    ? "AI"
                                                                     : isAgent
                                                                         ? "Agent"
                                                                         : "Customer"}
                                                             </span>
 
                                                             <span className="text-xs text-muted-foreground">
-                                                                {formatDate(
+                                                                {formatDateSafe(
                                                                     message.created_at
                                                                 )}
                                                             </span>
                                                         </div>
 
                                                         <p className="text-sm leading-relaxed">
-                                                            {message.content}
+                                                            {safeText(
+                                                                message.content
+                                                            )}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -593,12 +712,45 @@ export const ConversationPage = () => {
                                             No messages yet
                                         </p>
                                         <p className="mt-1 text-sm text-muted-foreground">
-                                            Send the first message to start the
-                                            conversation.
+                                            Messages will appear here.
                                         </p>
                                     </div>
                                 )}
                             </div>
+
+                            {selectedConversation &&
+                                !isPendingConversation &&
+                                !isClosedConversation && (
+                                    <div className="border-t border-border/50 bg-primary/5 px-4 py-3">
+                                        <p className="text-xs text-muted-foreground">
+                                            AI is currently handling this
+                                            conversation. To reply as an agent,
+                                            change the status to{" "}
+                                            <span className="font-semibold text-primary">
+                                                Pending
+                                            </span>
+                                            .
+                                        </p>
+                                    </div>
+                                )}
+
+                            {selectedConversation && isPendingConversation && (
+                                <div className="border-t border-amber-500/20 bg-amber-500/10 px-4 py-3">
+                                    <p className="text-xs text-amber-300">
+                                        Human handoff active. You can now reply
+                                        as an agent.
+                                    </p>
+                                </div>
+                            )}
+
+                            {selectedConversation && isClosedConversation && (
+                                <div className="border-t border-red-500/20 bg-red-500/10 px-4 py-3">
+                                    <p className="text-xs text-red-300">
+                                        This conversation is closed. Move it to
+                                        Pending to continue.
+                                    </p>
+                                </div>
+                            )}
 
                             <div className="border-t border-border/50 p-4">
                                 <div className="flex gap-3">
@@ -616,17 +768,18 @@ export const ConversationPage = () => {
                                                 handleSendMessage();
                                             }
                                         }}
-                                        placeholder={
-                                            canReply
-                                                ? "Write a reply..."
-                                                : "View-only access. You cannot reply."
-                                        }
-                                        className="min-h-[44px] flex-1 resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+                                        disabled={!canSendAgentMessage}
+                                        placeholder={replyPlaceholder}
+                                        className="min-h-[44px] flex-1 resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
                                     />
 
                                     <Button
                                         onClick={handleSendMessage}
-                                        disabled={!canReply || isSending || !messageInput.trim()}
+                                        disabled={
+                                            !canSendAgentMessage ||
+                                            isSending ||
+                                            !messageInput.trim()
+                                        }
                                         className="h-auto px-5"
                                     >
                                         <Send className="mr-2 h-4 w-4" />
@@ -646,7 +799,7 @@ export const ConversationPage = () => {
                             </h2>
 
                             <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                                Choose a conversation from the left to view
+                                Choose a conversation from the list to view
                                 messages, AI summary, urgency, sentiment and
                                 customer details.
                             </p>

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router";
 import {
-    Bot,
     ChevronDown,
     Crown,
     LogOut,
@@ -170,14 +169,18 @@ export const Sidebar = ({
                             className={`mb-3 flex items-center ${sidebarCollapsed ? "justify-center" : "gap-2"
                                 }`}
                         >
-                            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-r from-primary to-accent">
-                                <Bot className="h-5 w-5 text-white" />
+                            <div className="relative w-8 h-8 flex items-center justify-center glow overflow-hidden">
+                                <img
+                                    src="/icon.png"
+                                    alt="Icono"
+                                    className="w-8 h-8 object-contain"
+                                />
                                 <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400" />
                             </div>
 
                             {!sidebarCollapsed && (
                                 <span className="text-xl font-bold tracking-tight">
-                                    Lumora
+                                    Atendilo
                                 </span>
                             )}
                         </div>
@@ -195,7 +198,7 @@ export const Sidebar = ({
 
                                         <div className="min-w-0 text-left">
                                             <p className="truncate text-sm font-semibold">
-                                                {business?.name || "Lumora Business"}
+                                                {business?.name || "Atendilo Business"}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
                                                 {subscription?.plans?.name || "No Plan"}
@@ -218,7 +221,7 @@ export const Sidebar = ({
 
                                             <div>
                                                 <p className="text-sm font-medium">
-                                                    {business?.name || "Lumora Business"}
+                                                    {business?.name || "Atendilo Business"}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
                                                     {subscription?.plans?.name || "No Plan"}
@@ -283,7 +286,7 @@ export const Sidebar = ({
                                     </div>
 
                                     <p className="text-xs leading-relaxed text-muted-foreground">
-                                        All Lumora modules are unlocked.
+                                        All Atendilo modules are unlocked.
                                     </p>
                                 </div>
                             ) : (

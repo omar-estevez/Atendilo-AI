@@ -17,6 +17,7 @@ import type {
 import { getChannelIcon, getChannelTitle, getChannelDescription, getStatusClass, getStatusIcon } from "./helpers/ChannelHelpers";
 import { ChannelConfigForm } from "./channel-config-form/ChannelConfigForm";
 import { WebChatPreview } from "@/dashboard/components/webchat/WebChatPreview";
+import { toast } from "sonner";
 
 const allowedChannels: ChannelType[] = [
     "whatsapp",
@@ -110,6 +111,22 @@ export const ChannelPage = () => {
             </div>
         );
     }
+
+    const widgetInstallCode = businessId
+        ? `<script 
+  src="https://Atendilo-ai.estevezneira95.workers.dev/widget.js" 
+  data-business-id="${businessId}"
+  data-api-url="https://Atendilo-ai-back.onrender.com">
+</script>`
+        : "";
+
+    const handleCopyWidgetCode = async () => {
+        if (!widgetInstallCode) return;
+
+        await navigator.clipboard.writeText(widgetInstallCode);
+
+        toast.success("Widget code copied");
+    };
 
     return (
         <div className="h-full px-5 py-6 sm:px-7 lg:px-8">
@@ -309,7 +326,7 @@ export const ChannelPage = () => {
                 </div>
             </div>
 
-            {channelType === "webchat" && businessId ? (
+            {channelType === "webchat" && businessId && selectedChannel?.status === 'active' && (
                 <div className="mt-5 space-y-5">
                     <Card className="border-border/50 bg-card/60 p-5">
                         <div className="mb-4">
@@ -321,13 +338,19 @@ export const ChannelPage = () => {
                             </p>
                         </div>
 
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCopyWidgetCode}
+                            disabled={!widgetInstallCode}
+                        >
+                            Copy Code
+                        </Button>
+
                         <div className="rounded-xl border border-border bg-background p-4">
-                            <pre className="overflow-x-auto text-sm text-muted-foreground">
-                                <code>{`<script 
-  src="https://lumora-ai.estevezneira95.workers.dev/widget.js" 
-  data-business-id="${businessId}"
-  data-api-url="https://lumora-ai-back.onrender.com">
-</script>`}</code>
+                            <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl border border-border bg-background p-4 text-sm text-muted-foreground">
+                                <code>{widgetInstallCode}</code>
                             </pre>
                         </div>
                     </Card>
@@ -338,14 +361,14 @@ export const ChannelPage = () => {
                                 Web Chat Preview
                             </h2>
                             <p className="text-sm text-muted-foreground">
-                                Test how Lumora AI will respond to visitors on your website.
+                                Test how Atendilo AI will respond to visitors on your website.
                             </p>
                         </div>
 
                         <WebChatPreview businessId={businessId} />
                     </Card>
                 </div>
-            ) : null}
+            )}
         </div>
     );
 };

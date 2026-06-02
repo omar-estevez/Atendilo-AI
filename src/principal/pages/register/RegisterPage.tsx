@@ -168,14 +168,14 @@ export const RegisterPage = () => {
                                 <Sparkles className="w-6 h-6 text-white" />
                             </div>
                             <span className="text-2xl font-bold text-foreground">
-                                Lumora
+                                Atendilo
                             </span>
                         </Link>
 
                         {/* Headline */}
                         <h1 className="text-4xl xl:text-5xl font-bold text-foreground leading-tight mb-6">
                             Create your{" "}
-                            <span className="text-gradient">Lumora Account</span>
+                            <span className="text-gradient">Atendilo Account</span>
                         </h1>
 
                         <p className="text-lg text-muted-foreground mb-12 max-w-md">
@@ -213,7 +213,7 @@ export const RegisterPage = () => {
                             className="mt-12 p-6 glass rounded-2xl max-w-md"
                         >
                             <p className="text-muted-foreground italic mb-4">
-                                &quot;Lumora shows how your business could respond faster, capture more leads, and book more appointments automatically.&quot;
+                                &quot;Atendilo shows how your business could respond faster, capture more leads, and book more appointments automatically.&quot;
                             </p>
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-linear-to-r from-primary to-accent flex items-center justify-center text-white font-semibold">
@@ -247,7 +247,7 @@ export const RegisterPage = () => {
                             <Sparkles className="w-5 h-5 text-white" />
                         </div>
                         <span className="text-xl font-bold text-foreground">
-                            Lumora
+                            Atendilo
                         </span>
                     </Link>
 

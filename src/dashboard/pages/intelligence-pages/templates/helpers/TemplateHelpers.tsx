@@ -1,5 +1,5 @@
 import type { TemplateChannel, TemplateType } from "@/services/dashboard/templatesService";
-import { Bot, Send, CheckCircle2, MessageSquare, Mail, FileText } from "lucide-react";
+import { Send, CheckCircle2, MessageSquare, Mail, FileText } from "lucide-react";
 
 export const formatLabel = (value?: string | null) => {
     if (!value) return "Unknown";
@@ -12,7 +12,11 @@ export const formatLabel = (value?: string | null) => {
 export const getTypeIcon = (type: TemplateType) => {
     switch (type) {
         case "ai_prompt":
-            return <Bot className="h-4 w-4 text-primary" />;
+            return <img
+                src="/icon.png"
+                alt="Icono"
+                className="w-5 h-5 object-contain"
+            />;
         case "quote":
             return <Send className="h-4 w-4 text-emerald-400" />;
         case "booking_confirmation":

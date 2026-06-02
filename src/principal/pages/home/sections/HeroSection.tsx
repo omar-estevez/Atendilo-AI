@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { Sparkles, ArrowRight, Check, Users, Bot } from "lucide-react"
+import { Sparkles, ArrowRight, Check, Users } from "lucide-react"
 import { useNavigate } from "react-router"
 
 const fadeInUp = {
@@ -111,7 +111,7 @@ export const HeroSection = () => {
                                         <div className="w-3 h-3 rounded-full bg-green-500/60" />
                                     </div>
                                     <div className="flex-1 text-center">
-                                        <span className="text-xs text-muted-foreground">dashboard.Lumora.ai</span>
+                                        <span className="text-xs text-muted-foreground">dashboard.Atendilo.ai</span>
                                     </div>
                                 </div>
                                 {/* Dashboard Content */}
@@ -143,8 +143,12 @@ export const HeroSection = () => {
                                                 </div>
                                             </div>
                                             <div className="flex items-start gap-3 flex-row-reverse">
-                                                <div className="w-8 h-8 rounded-full bg-linear-to-br from-primary to-accent flex items-center justify-center flex-shrink-0">
-                                                    <Bot className="w-4 h-4 text-primary-foreground" />
+                                                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0">
+                                                    <img
+                                                        src="/icon.png"
+                                                        alt="Icono"
+                                                        className="w-full h-full object-contain"
+                                                    />
                                                 </div>
                                                 <div className="flex-1 bg-primary/20 rounded-lg rounded-tr-none p-3">
                                                     <p className="text-sm">Great question! Our full detail for SUVs starts at $149. This includes exterior wash, interior deep clean, and full wax protection. Would you like to book an appointment? I have availability tomorrow at 10 AM or 2 PM.</p>
