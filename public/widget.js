@@ -14,6 +14,7 @@
   }
 
   const apiUrl = script.getAttribute("data-api-url") || "http://localhost:4000";
+
   const widgetOrigin = new URL(script.src).origin;
   const logoPath = script.getAttribute("data-logo-path") || "/icon.png";
   const logoUrl = `${widgetOrigin}${logoPath.startsWith("/") ? logoPath : `/${logoPath}`}`;
@@ -48,6 +49,10 @@
     );
   }
 
+  function createClientMessageId() {
+    return `client_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  }
+
   function createEmptySession() {
     return {
       sessionId: createSessionId(),
@@ -76,6 +81,7 @@
 
       const parsedSession = JSON.parse(rawSession);
       const lastActivityAt = Number(parsedSession.lastActivityAt || 0);
+
       const isExpired =
         lastActivityAt && Date.now() - lastActivityAt > inactivityLimit;
 
@@ -196,11 +202,21 @@
       role = "assistant";
     }
 
+    const metadata = item.metadata || {};
+
+    const clientMessageId =
+      item.clientMessageId ||
+      item.client_message_id ||
+      metadata.clientMessageId ||
+      metadata.client_message_id ||
+      null;
+
     return {
       id:
         item.id ||
         item.messageId ||
         `${role}_${item.created_at || item.createdAt || Date.now()}_${Math.random()}`,
+      clientMessageId,
       role,
       content: item.content || item.message || "",
       createdAt: item.created_at || item.createdAt || new Date().toISOString(),
@@ -215,11 +231,21 @@
     return String(value || "").trim();
   }
 
-  function sameMessageContent(a, b) {
-    return (
-      a?.role === b?.role &&
-      normalizeContent(a?.content) === normalizeContent(b?.content)
-    );
+  function getMessageFingerprint(message) {
+    if (message?.clientMessageId) {
+      return `client::${message.clientMessageId}`;
+    }
+
+    if (message?.id) {
+      return `id::${message.id}`;
+    }
+
+    return [
+      "fallback",
+      message?.role || "",
+      message?.content || "",
+      message?.createdAt || "",
+    ].join("::");
   }
 
   function areCloseInTime(a, b) {
@@ -231,57 +257,66 @@
     return Math.abs(dateA - dateB) <= 5 * 60 * 1000;
   }
 
-  function getMessageFingerprint(message) {
-    if (message?.id) {
-      return `id::${message.id}`;
+  function isSameLocalAndServerMessage(localMessage, serverMessage) {
+    if (!isLocalMessage(localMessage)) return false;
+
+    if (
+      localMessage.clientMessageId &&
+      serverMessage.clientMessageId &&
+      localMessage.clientMessageId === serverMessage.clientMessageId
+    ) {
+      return true;
     }
 
-    return [
-      "local",
-      message?.role || "",
-      message?.content || "",
-      message?.createdAt || "",
-    ].join("::");
+    return (
+      localMessage.role === serverMessage.role &&
+      normalizeContent(localMessage.content) ===
+      normalizeContent(serverMessage.content) &&
+      areCloseInTime(localMessage, serverMessage)
+    );
   }
 
   function mergeMessages(localMessages, serverMessages) {
     const localList = Array.isArray(localMessages) ? localMessages : [];
     const serverList = Array.isArray(serverMessages) ? serverMessages : [];
-    const matchedLocalIndexes = new Set();
-    const result = [];
-    const resultKeys = new Set();
+
+    const usedLocalIndexes = new Set();
+    const merged = [];
+    const usedKeys = new Set();
 
     serverList.forEach((serverMessage) => {
+      if (!serverMessage?.content) return;
+
       const matchingLocalIndex = localList.findIndex((localMessage, index) => {
-        if (matchedLocalIndexes.has(index)) return false;
-        if (!isLocalMessage(localMessage)) return false;
-        if (!sameMessageContent(localMessage, serverMessage)) return false;
-        return areCloseInTime(localMessage, serverMessage);
+        if (usedLocalIndexes.has(index)) return false;
+        return isSameLocalAndServerMessage(localMessage, serverMessage);
       });
 
       if (matchingLocalIndex >= 0) {
-        matchedLocalIndexes.add(matchingLocalIndex);
+        usedLocalIndexes.add(matchingLocalIndex);
+      }
+
+      const key = getMessageFingerprint(serverMessage);
+
+      if (!usedKeys.has(key)) {
+        usedKeys.add(key);
+        merged.push(serverMessage);
       }
     });
 
-    [...serverList, ...localList].forEach((message) => {
-      if (!message?.content) return;
+    localList.forEach((localMessage, index) => {
+      if (!localMessage?.content) return;
+      if (usedLocalIndexes.has(index)) return;
 
-      const localIndex = localList.indexOf(message);
+      const key = getMessageFingerprint(localMessage);
 
-      if (localIndex >= 0 && matchedLocalIndexes.has(localIndex)) {
-        return;
+      if (!usedKeys.has(key)) {
+        usedKeys.add(key);
+        merged.push(localMessage);
       }
-
-      const key = getMessageFingerprint(message);
-
-      if (resultKeys.has(key)) return;
-
-      resultKeys.add(key);
-      result.push(message);
     });
 
-    return result.sort((a, b) => {
+    return merged.sort((a, b) => {
       const dateA = new Date(a.createdAt || 0).getTime();
       const dateB = new Date(b.createdAt || 0).getTime();
 
@@ -1110,12 +1145,20 @@
       messagesEl.innerHTML = "";
 
       if (shouldShowLocalWelcome()) {
-        addMessage("assistant", widgetConfig.welcomeMessage, false, "welcome_message");
+        addMessage(
+          "assistant",
+          widgetConfig.welcomeMessage,
+          false,
+          "welcome_message"
+        );
       }
 
       widgetSession.messages.forEach((item) => {
         if (item.role === "agent" && !widgetSession.agentMode) return;
-        addMessage(item.role, item.content, false, item.id);
+        addMessage(item.role, item.content, false, item.id, {
+          clientMessageId: item.clientMessageId,
+          createdAt: item.createdAt,
+        });
       });
 
       if (isSendingMessage && widgetSession.conversationStatus !== "pending") {
@@ -1123,8 +1166,8 @@
       }
     }
 
-    function addMessage(role, content, shouldSave = true, id) {
-      if (!messagesEl || !content) return;
+    function addMessage(role, content, shouldSave = true, id, extra = {}) {
+      if (!messagesEl || !content) return null;
 
       const row = document.createElement("div");
       row.className = `atendilo-message-row ${role}`;
@@ -1154,20 +1197,24 @@
       messagesEl.appendChild(row);
       messagesEl.scrollTop = messagesEl.scrollHeight;
 
-      if (shouldSave) {
-        widgetSession.messages.push({
-          id:
-            id ||
-            `local_${role}_${Date.now()}_${Math.random()
-              .toString(36)
-              .slice(2)}`,
-          role,
-          content,
-          createdAt: new Date().toISOString(),
-        });
+      if (!shouldSave) return null;
 
-        saveSession();
-      }
+      const newMessage = {
+        id:
+          id ||
+          `local_${role}_${Date.now()}_${Math.random()
+            .toString(36)
+            .slice(2)}`,
+        clientMessageId: extra.clientMessageId || createClientMessageId(),
+        role,
+        content,
+        createdAt: extra.createdAt || new Date().toISOString(),
+      };
+
+      widgetSession.messages.push(newMessage);
+      saveSession();
+
+      return newMessage;
     }
 
     function showTypingIndicator() {
@@ -1334,7 +1381,9 @@
 
         const newIncomingMessages = mergedMessages.filter((item) => {
           const fingerprint = getMessageFingerprint(item);
+
           if (previousFingerprints.has(fingerprint)) return false;
+
           return item.role === "assistant" || item.role === "agent";
         });
 
@@ -1391,13 +1440,17 @@
 
       if (isSendingMessage) return;
 
+      const clientMessageId = createClientMessageId();
+
       if (isHumanAgentRequest(message)) {
         widgetSession.agentMode = true;
       }
 
       saveSession();
 
-      addMessage("user", message);
+      addMessage("user", message, true, undefined, {
+        clientMessageId,
+      });
 
       messageInput.value = "";
       sendButton.disabled = true;
@@ -1425,6 +1478,7 @@
               businessId,
               sessionId: widgetSession.sessionId,
               message,
+              clientMessageId,
               visitor: {
                 name: widgetSession.visitor?.name || undefined,
                 phone: widgetSession.visitor?.phone || undefined,
