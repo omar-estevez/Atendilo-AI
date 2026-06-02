@@ -324,9 +324,9 @@ export const ChannelPage = () => {
                         <div className="rounded-xl border border-border bg-background p-4">
                             <pre className="overflow-x-auto text-sm text-muted-foreground">
                                 <code>{`<script 
-  src="http://localhost:5173/widget.js" 
+  src="https://lumora-ai.estevezneira95.workers.dev/widget.js" 
   data-business-id="${businessId}"
-  data-api-url="http://localhost:4000">
+  data-api-url="https://lumora-ai-back.onrender.com">
 </script>`}</code>
                             </pre>
                         </div>
