@@ -14,7 +14,6 @@
   }
 
   const apiUrl = script.getAttribute("data-api-url") || "http://localhost:4000";
-
   const widgetOrigin = new URL(script.src).origin;
   const logoPath = script.getAttribute("data-logo-path") || "/icon.png";
   const logoUrl = `${widgetOrigin}${logoPath.startsWith("/") ? logoPath : `/${logoPath}`}`;
@@ -77,7 +76,6 @@
 
       const parsedSession = JSON.parse(rawSession);
       const lastActivityAt = Number(parsedSession.lastActivityAt || 0);
-
       const isExpired =
         lastActivityAt && Date.now() - lastActivityAt > inactivityLimit;
 
@@ -163,7 +161,9 @@
       value.includes("hablar con alguien") ||
       value.includes("quiero hablar") ||
       value.includes("speak to someone") ||
-      value.includes("talk to someone")
+      value.includes("talk to someone") ||
+      value.includes("live agent") ||
+      value.includes("real person")
     );
   }
 
@@ -207,35 +207,85 @@
     };
   }
 
+  function isLocalMessage(message) {
+    return String(message?.id || "").startsWith("local_");
+  }
+
+  function normalizeContent(value) {
+    return String(value || "").trim();
+  }
+
+  function sameMessageContent(a, b) {
+    return (
+      a?.role === b?.role &&
+      normalizeContent(a?.content) === normalizeContent(b?.content)
+    );
+  }
+
+  function areCloseInTime(a, b) {
+    const dateA = new Date(a?.createdAt || 0).getTime();
+    const dateB = new Date(b?.createdAt || 0).getTime();
+
+    if (!dateA || !dateB) return true;
+
+    return Math.abs(dateA - dateB) <= 5 * 60 * 1000;
+  }
+
   function getMessageFingerprint(message) {
-    return `${message.role}::${String(message.content || "").trim()}`;
+    if (message?.id) {
+      return `id::${message.id}`;
+    }
+
+    return [
+      "local",
+      message?.role || "",
+      message?.content || "",
+      message?.createdAt || "",
+    ].join("::");
   }
 
   function mergeMessages(localMessages, serverMessages) {
-    const merged = [];
-    const seenIds = new Set();
-    const seenFingerprints = new Set();
+    const localList = Array.isArray(localMessages) ? localMessages : [];
+    const serverList = Array.isArray(serverMessages) ? serverMessages : [];
+    const matchedLocalIndexes = new Set();
+    const result = [];
+    const resultKeys = new Set();
 
-    [...localMessages, ...serverMessages].forEach((message) => {
-      if (!message?.content) return;
+    serverList.forEach((serverMessage) => {
+      const matchingLocalIndex = localList.findIndex((localMessage, index) => {
+        if (matchedLocalIndexes.has(index)) return false;
+        if (!isLocalMessage(localMessage)) return false;
+        if (!sameMessageContent(localMessage, serverMessage)) return false;
+        return areCloseInTime(localMessage, serverMessage);
+      });
 
-      const id = message.id;
-      const fingerprint = getMessageFingerprint(message);
-
-      if (id && seenIds.has(id)) return;
-      if (seenFingerprints.has(fingerprint)) return;
-
-      if (id) seenIds.add(id);
-      seenFingerprints.add(fingerprint);
-
-      merged.push(message);
+      if (matchingLocalIndex >= 0) {
+        matchedLocalIndexes.add(matchingLocalIndex);
+      }
     });
 
-    return merged.sort((a, b) => {
-      return (
-        new Date(a.createdAt || 0).getTime() -
-        new Date(b.createdAt || 0).getTime()
-      );
+    [...serverList, ...localList].forEach((message) => {
+      if (!message?.content) return;
+
+      const localIndex = localList.indexOf(message);
+
+      if (localIndex >= 0 && matchedLocalIndexes.has(localIndex)) {
+        return;
+      }
+
+      const key = getMessageFingerprint(message);
+
+      if (resultKeys.has(key)) return;
+
+      resultKeys.add(key);
+      result.push(message);
+    });
+
+    return result.sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+
+      return dateA - dateB;
     });
   }
 
@@ -270,19 +320,13 @@
 
       widgetConfig = {
         status: data.status || widgetConfig.status,
-        widgetTitle: data.widgetTitle || data.widget_title || widgetConfig.widgetTitle,
-        welcomeMessage:
-          data.welcomeMessage ||
-          data.welcome_message ||
-          "",
+        widgetTitle:
+          data.widgetTitle || data.widget_title || widgetConfig.widgetTitle,
+        welcomeMessage: data.welcomeMessage || data.welcome_message || "",
         primaryColor:
-          data.primaryColor ||
-          data.primary_color ||
-          widgetConfig.primaryColor,
+          data.primaryColor || data.primary_color || widgetConfig.primaryColor,
         captureLeads:
-          data.captureLeads ??
-          data.capture_leads ??
-          widgetConfig.captureLeads,
+          data.captureLeads ?? data.capture_leads ?? widgetConfig.captureLeads,
       };
 
       if (!widgetConfig.welcomeMessage) {
@@ -1074,7 +1118,7 @@
         addMessage(item.role, item.content, false, item.id);
       });
 
-      if (isSendingMessage) {
+      if (isSendingMessage && widgetSession.conversationStatus !== "pending") {
         showTypingIndicator();
       }
     }
@@ -1128,6 +1172,7 @@
 
     function showTypingIndicator() {
       if (!messagesEl) return;
+      if (widgetSession.conversationStatus === "pending") return;
 
       hideTypingIndicator();
 
@@ -1197,6 +1242,7 @@
       await endSessionInBackend(currentSessionId, reason);
 
       widgetSession.ended = true;
+      widgetSession.conversationStatus = "closed";
       isSendingMessage = false;
       hideTypingIndicator();
       saveSession();
@@ -1253,11 +1299,11 @@
           widgetSession.agentMode = true;
           isSendingMessage = false;
           hideTypingIndicator();
-          saveSession();
         }
 
         if (data.status === "closed" && !widgetSession.ended) {
           widgetSession.ended = true;
+          widgetSession.conversationStatus = "closed";
           isSendingMessage = false;
           hideTypingIndicator();
           saveSession();
@@ -1269,7 +1315,8 @@
           ? data.messages.map(normalizeMessage).filter((item) => item.content)
           : [];
 
-        if (!serverMessages.length) return;
+        widgetSession.conversationId =
+          data.conversationId || widgetSession.conversationId;
 
         const visibleServerMessages = serverMessages.filter((item) => {
           if (item.role === "agent" && !widgetSession.agentMode) return false;
@@ -1277,12 +1324,8 @@
         });
 
         const previousFingerprints = new Set(
-          widgetSession.messages.map(getMessageFingerprint)
+          widgetSession.messages.map((item) => getMessageFingerprint(item))
         );
-
-        const localPendingMessages = widgetSession.messages.filter((item) => {
-          return String(item.id || "").startsWith("local_user_");
-        });
 
         const mergedMessages = mergeMessages(
           widgetSession.messages,
@@ -1296,16 +1339,15 @@
         });
 
         const currentSignature = widgetSession.messages
-          .map(getMessageFingerprint)
+          .map((item) => getMessageFingerprint(item))
           .join("|");
 
-        const mergedSignature = mergedMessages.map(getMessageFingerprint).join("|");
+        const mergedSignature = mergedMessages
+          .map((item) => getMessageFingerprint(item))
+          .join("|");
 
-        if (currentSignature !== mergedSignature) {
+        if (currentSignature !== mergedSignature || data.status) {
           widgetSession.messages = mergedMessages;
-          widgetSession.conversationId =
-            data.conversationId || widgetSession.conversationId;
-
           saveSession();
           renderMessages();
 
@@ -1393,21 +1435,27 @@
           45000
         );
 
-        const data = await response.json();
+        let data = null;
+
+        try {
+          data = await response.json();
+        } catch {
+          data = null;
+        }
 
         if (!response.ok) {
           throw new Error(data?.error || "Message failed.");
         }
 
-        if (data.conversationId) {
+        if (data?.conversationId) {
           widgetSession.conversationId = data.conversationId;
         }
 
-        if (data.status) {
+        if (data?.status) {
           widgetSession.conversationStatus = data.status;
         }
 
-        if (data.status === "pending") {
+        if (data?.status === "pending") {
           widgetSession.agentMode = true;
           isSendingMessage = false;
           hideTypingIndicator();
@@ -1415,7 +1463,7 @@
 
         hideTypingIndicator();
 
-        if (data.reply) {
+        if (data?.reply) {
           addMessage("assistant", data.reply);
         }
 
