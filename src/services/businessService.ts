@@ -91,41 +91,54 @@ export const businessService = {
             .from("profiles")
             .select("*")
             .eq("id", user.id)
-            .single();
+            .maybeSingle()
 
         if (error) {
             throw new Error(error.message);
+        }
+
+        if (!data) {
+            throw new Error("Profile not found");
         }
 
         return data as Profile;
     },
 
-    async getMyBusiness() {
+    async getMyBusiness(businessId: string) {
         const { data, error } = await supabase
             .from("businesses")
             .select("*")
-            .single();
+            .eq("id", businessId)
+            .maybeSingle();
 
         if (error) {
             throw new Error(error.message);
         }
 
+        if (!data) {
+            throw new Error("Business not found");
+        }
+
         return data as Business;
     },
 
-    async getMySubscription() {
+    async getMySubscription(businessId: string) {
         const { data, error } = await supabase
             .from("subscriptions")
             .select(`
         *,
         plans (*)
       `)
-            .single();
+            .eq("business_id", businessId)
+            .maybeSingle()
 
         if (error) {
             throw new Error(error.message);
         }
 
+        if (!data) {
+            throw new Error("Subscription not found");
+        }
 
         return data as Subscription;
     },

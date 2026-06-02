@@ -90,7 +90,7 @@ export const appRouter = createBrowserRouter([
             {
                 path: "/reset-password",
                 element: <ResetPasswordPage />,
-            },
+            }
         ],
     },
     {

@@ -16,6 +16,7 @@ import type {
 } from "@/services/dashboard/channelsService";
 import { getChannelIcon, getChannelTitle, getChannelDescription, getStatusClass, getStatusIcon } from "./helpers/ChannelHelpers";
 import { ChannelConfigForm } from "./channel-config-form/ChannelConfigForm";
+import { WebChatPreview } from "@/dashboard/components/webchat/WebChatPreview";
 
 const allowedChannels: ChannelType[] = [
     "whatsapp",
@@ -37,8 +38,10 @@ export const ChannelPage = () => {
         updateChannelConfig,
     } = useChannelsStore();
 
-    const hasPermission = useAuthStore((state) => state.hasPermission);
+    const { hasPermission, business } = useAuthStore();
+
     const canManageChannels = hasPermission("channels.manage");
+    const businessId = business?.id;
 
     const channelType = channel as ChannelType;
 
@@ -279,21 +282,70 @@ export const ChannelPage = () => {
                             </div>
                         </div>
 
-                        <div className="p-5">
-                            <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-4">
+                        {channelType === "webchat" ? (
+                            <div className="p-5">
+                                <p className="font-semibold text-emerald-400">
+                                    Backend connected
+                                </p>
+
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                    Web Chat is connected to the Node/Express API, Supabase and Gemini AI.
+                                    Use the preview below to test real conversations.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="p-5">
                                 <p className="font-semibold text-amber-400">
                                     Backend not connected yet
                                 </p>
 
                                 <p className="mt-2 text-sm text-muted-foreground">
                                     This page stores channel configuration.
-                                    Later, Node/Express will use this config to connect providers like Twilio, SMTP or the webchat widget.
+                                    Later, Node/Express will use this config to connect providers like Twilio, SMTP or email providers.
                                 </p>
                             </div>
-                        </div>
+                        )}
                     </Card>
                 </div>
             </div>
+
+            {channelType === "webchat" && businessId ? (
+                <div className="mt-5 space-y-5">
+                    <Card className="border-border/50 bg-card/60 p-5">
+                        <div className="mb-4">
+                            <h2 className="text-lg font-semibold">
+                                Widget Install Code
+                            </h2>
+                            <p className="text-sm text-muted-foreground">
+                                Copy this code and paste it before the closing body tag on your website.
+                            </p>
+                        </div>
+
+                        <div className="rounded-xl border border-border bg-background p-4">
+                            <pre className="overflow-x-auto text-sm text-muted-foreground">
+                                <code>{`<script 
+  src="http://localhost:5173/widget.js" 
+  data-business-id="${businessId}"
+  data-api-url="http://localhost:4000">
+</script>`}</code>
+                            </pre>
+                        </div>
+                    </Card>
+
+                    <Card className="border-border/50 bg-card/60 p-5">
+                        <div className="mb-5">
+                            <h2 className="text-lg font-semibold">
+                                Web Chat Preview
+                            </h2>
+                            <p className="text-sm text-muted-foreground">
+                                Test how Lumora AI will respond to visitors on your website.
+                            </p>
+                        </div>
+
+                        <WebChatPreview businessId={businessId} />
+                    </Card>
+                </div>
+            ) : null}
         </div>
     );
 };

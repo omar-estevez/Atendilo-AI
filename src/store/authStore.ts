@@ -148,12 +148,23 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             } catch (error) {
                 console.error("Error loading user data:", error);
 
+                await authService.signOut();
+
                 set({
-                    error:
-                        error instanceof Error
-                            ? error.message
-                            : "Failed to load user data",
+                    user: null,
+                    session: null,
+                    profile: null,
+                    business: null,
+                    subscription: null,
+                    modules: [],
+                    isAuthenticated: false,
+                    isLoading: false,
+                    isInitialized: true,
+                    loadingStep: null,
+                    error: null,
                 });
+
+                return;
             }
 
             set({
@@ -205,7 +216,29 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
             await sleep(LOADING_STEP_DELAY);
 
-            await get().loadUserData();
+            try {
+                await get().loadUserData();
+            } catch (error) {
+                console.error("Error loading user data after login:", error);
+
+                await authService.signOut();
+
+                set({
+                    user: null,
+                    session: null,
+                    profile: null,
+                    business: null,
+                    subscription: null,
+                    modules: [],
+                    isAuthenticated: false,
+                    isLoading: false,
+                    isInitialized: true,
+                    loadingStep: null,
+                    error: "We couldn't access your account. Please check your credentials or create a new account.",
+                });
+
+                throw error;
+            }
 
             set({
                 isLoading: false,
@@ -402,7 +435,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         });
         await sleep(LOADING_STEP_DELAY);
 
-        const business = await businessService.getMyBusiness();
+        if (!profile.business_id) {
+            throw new Error("BUSINESS_ID_NOT_FOUND");
+        }
+
+        const business = await businessService.getMyBusiness(profile.business_id);
 
         set({
             business,
@@ -410,7 +447,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         });
         await sleep(LOADING_STEP_DELAY);
 
-        const subscription = await businessService.getMySubscription();
+        const subscription = await businessService.getMySubscription(profile.business_id);
 
         set({
             subscription,
