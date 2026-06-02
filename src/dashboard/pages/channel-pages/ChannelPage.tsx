@@ -114,9 +114,9 @@ export const ChannelPage = () => {
 
     const widgetInstallCode = businessId
         ? `<script 
-  src="https://Atendilo-ai.estevezneira95.workers.dev/widget.js" 
+  src="https://atendilo-ai.estevezneira95.workers.dev/widget.js" 
   data-business-id="${businessId}"
-  data-api-url="https://Atendilo-ai-back.onrender.com">
+  data-api-url="https://atendilo-ai.onrender.com">
 </script>`
         : "";
 
