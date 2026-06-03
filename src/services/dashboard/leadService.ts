@@ -45,20 +45,30 @@ export interface LeadItem {
 }
 
 const getLeadStatus = (score: number): LeadStatus => {
-    if (score >= 80) return "hot";
-    if (score >= 50) return "warm";
+    if (score >= 85) return "hot";
+    if (score >= 60) return "warm";
+
     return "cold";
 };
 
 export const leadsService = {
     async getLeads(limit = 100) {
+        const leadIntents = [
+            "booking_request",
+            "price_question",
+            "service_question",
+            "human_handoff",
+            "complaint",
+        ];
+
         const { data, error } = await supabase
             .from("conversations")
             .select(`
-                *,
-                contacts (*),
-                channels (*)
-            `)
+      *,
+      contacts (*),
+      channels (*)
+    `)
+            .not("ai_score", "is", null)
             .order("last_message_at", {
                 ascending: false,
                 nullsFirst: false,
@@ -71,30 +81,36 @@ export const leadsService = {
 
         const conversations = data as LeadConversation[];
 
-        return conversations.map((conversation) => {
-            const score = conversation.ai_score || 0;
+        return conversations
+            .filter((conversation) => {
+                const score = conversation.ai_score || 0;
+                const intent = conversation.intent || "";
 
-            return {
-                id: conversation.id,
-                contactId: conversation.contact_id,
-                conversationId: conversation.id,
-                contactName:
-                    conversation.contacts?.full_name || "Unknown Contact",
-                email: conversation.contacts?.email || null,
-                phone: conversation.contacts?.phone || null,
-                source: conversation.contacts?.source || null,
-                channelName: conversation.channels?.name || "Unknown Channel",
-                channelType: conversation.channels?.type || null,
-                status: getLeadStatus(score),
-                conversationStatus: conversation.status,
-                intent: conversation.intent,
-                urgency: conversation.urgency,
-                sentiment: conversation.sentiment,
-                aiScore: score,
-                aiSummary: conversation.ai_summary,
-                lastActivityAt: conversation.last_message_at,
-                createdAt: conversation.created_at,
-            } satisfies LeadItem;
-        });
-    },
+                return leadIntents.includes(intent) || score >= 75;
+            })
+            .map((conversation) => {
+                const score = conversation.ai_score || 0;
+
+                return {
+                    id: conversation.id,
+                    contactId: conversation.contact_id,
+                    conversationId: conversation.id,
+                    contactName: conversation.contacts?.full_name || "Unknown Contact",
+                    email: conversation.contacts?.email || null,
+                    phone: conversation.contacts?.phone || null,
+                    source: conversation.contacts?.source || conversation.channels?.type || null,
+                    channelName: conversation.channels?.name || "Unknown Channel",
+                    channelType: conversation.channels?.type || null,
+                    status: getLeadStatus(score),
+                    conversationStatus: conversation.status,
+                    intent: conversation.intent,
+                    urgency: conversation.urgency,
+                    sentiment: conversation.sentiment,
+                    aiScore: score,
+                    aiSummary: conversation.ai_summary,
+                    lastActivityAt: conversation.last_message_at,
+                    createdAt: conversation.created_at,
+                } satisfies LeadItem;
+            });
+    }
 };
