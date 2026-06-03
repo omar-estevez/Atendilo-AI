@@ -19,6 +19,17 @@ interface AIFlowsStore {
     deleteFlow: (flow: AIFlow) => Promise<void>;
     selectFlow: (flow: AIFlow | null) => void;
     clearError: () => void;
+    runTest: (flow: AIFlow) => Promise<void>;
+    updateFlow: (
+        flowId: string,
+        payload: {
+            name?: string;
+            description?: string | null;
+            trigger_type?: string;
+            status?: AIFlowStatus;
+            nodes_count?: number;
+        }
+    ) => Promise<void>;
 }
 
 export const useAIFlowsStore = create<AIFlowsStore>((set, get) => ({
@@ -135,5 +146,54 @@ export const useAIFlowsStore = create<AIFlowsStore>((set, get) => ({
 
     clearError: () => {
         set({ error: null });
+    },
+
+    runTest: async (flow) => {
+        try {
+            set({ error: null });
+
+            const updatedFlow = await aiFlowsService.runTest(flow);
+
+            set({
+                flows: get().flows.map((item) =>
+                    item.id === updatedFlow.id ? updatedFlow : item
+                ),
+                selectedFlow:
+                    get().selectedFlow?.id === updatedFlow.id
+                        ? updatedFlow
+                        : get().selectedFlow,
+            });
+        } catch (error) {
+            set({
+                error:
+                    error instanceof Error ? error.message : "Failed to run flow test",
+            });
+
+            throw error;
+        }
+    },
+
+    updateFlow: async (flowId, payload) => {
+        try {
+            set({ error: null });
+
+            const updatedFlow = await aiFlowsService.updateFlow(flowId, payload);
+
+            set({
+                flows: get().flows.map((flow) =>
+                    flow.id === updatedFlow.id ? updatedFlow : flow
+                ),
+                selectedFlow:
+                    get().selectedFlow?.id === updatedFlow.id
+                        ? updatedFlow
+                        : get().selectedFlow,
+            });
+        } catch (error) {
+            set({
+                error: error instanceof Error ? error.message : "Failed to update flow",
+            });
+
+            throw error;
+        }
     },
 }));

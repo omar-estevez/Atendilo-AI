@@ -109,4 +109,58 @@ export const aiFlowsService = {
 
         return true;
     },
+
+    async runTest(flow: AIFlow) {
+        const nextRuns = Number(flow.runs_count || 0) + 1;
+
+        const nextConversionRate =
+            flow.status === "active"
+                ? Math.min(100, Number(flow.conversion_rate || 0) + 5)
+                : Number(flow.conversion_rate || 0);
+
+        const { data, error } = await supabase
+            .from("ai_flows")
+            .update({
+                runs_count: nextRuns,
+                conversion_rate: nextConversionRate,
+                last_run_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            })
+            .eq("id", flow.id)
+            .select()
+            .single();
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        return data as AIFlow;
+    },
+
+    async updateFlow(
+        flowId: string,
+        payload: {
+            name?: string;
+            description?: string | null;
+            trigger_type?: string;
+            status?: AIFlowStatus;
+            nodes_count?: number;
+        }
+    ) {
+        const { data, error } = await supabase
+            .from("ai_flows")
+            .update({
+                ...payload,
+                updated_at: new Date().toISOString(),
+            })
+            .eq("id", flowId)
+            .select()
+            .single();
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        return data as AIFlow;
+    },
 };

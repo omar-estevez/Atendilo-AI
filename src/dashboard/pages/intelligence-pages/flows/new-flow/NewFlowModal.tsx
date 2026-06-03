@@ -14,10 +14,12 @@ interface NewFlowModalProps {
 const triggerOptions = [
     { value: "manual", label: "Manual" },
     { value: "new_conversation", label: "New Conversation" },
-    { value: "price_inquiry", label: "Price Inquiry" },
+    { value: "service_question", label: "Service Question" },
+    { value: "price_question", label: "Price Question" },
     { value: "booking_request", label: "Booking Request" },
-    { value: "no_response", label: "No Response" },
-    { value: "booking_completed", label: "Booking Completed" },
+    { value: "human_handoff", label: "Human Handoff" },
+    { value: "lead_score", label: "Lead Score Reached" },
+    { value: "follow_up_required", label: "Follow-up Required" },
 ];
 
 export const NewFlowModal = ({ open, onClose }: NewFlowModalProps) => {

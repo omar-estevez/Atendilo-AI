@@ -23,8 +23,7 @@ import { useAuthStore } from "@/store/authStore";
 import type { AIFlow, AIFlowStatus } from "@/services/dashboard/aiFlowsService";
 import { formatTime, getStatusClass, getStatusIcon, getConversionClass, formatLabel } from "./helpers/FlowsHelpers";
 import NewFlowModal from "./new-flow/NewFlowModal";
-
-
+import { EditFlowModal } from "./edit-flow/EditFlowModal";
 
 export const FlowsPage = () => {
     const {
@@ -36,9 +35,11 @@ export const FlowsPage = () => {
         updateFlowStatus,
         deleteFlow,
         selectFlow,
+        runTest,
+        updateFlow,
     } = useAIFlowsStore();
 
-    const hasPermission = useAuthStore((state) => state.hasPermission);
+    const { hasPermission } = useAuthStore();
 
     const canCreateFlow = hasPermission("ai_flows.create");
     const canEditFlow = hasPermission("ai_flows.edit");
@@ -49,6 +50,7 @@ export const FlowsPage = () => {
     const [statusFilter, setStatusFilter] = useState<AIFlowStatus | "all">("all");
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
     const [isNewFlowOpen, setIsNewFlowOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     useEffect(() => {
         loadFlows();
@@ -538,12 +540,21 @@ export const FlowsPage = () => {
 
                                 {canEditFlow && (
                                     <div className="mt-5 flex flex-wrap gap-3">
-                                        <Button>
-                                            <Zap className="mr-2 h-4 w-4" />
+                                        <Button
+                                            onClick={() => {
+                                                if (!selectedFlow) return;
+                                                runTest(selectedFlow);
+                                            }}
+                                        >
+                                            <Zap className="w-4 h-4 mr-2" />
                                             Run Test
                                         </Button>
 
-                                        <Button variant="outline">
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => setIsEditModalOpen(true)}
+                                            disabled={!selectedFlow}
+                                        >
                                             Edit Flow
                                         </Button>
 
@@ -591,6 +602,13 @@ export const FlowsPage = () => {
                     onClose={() => setIsNewFlowOpen(false)}
                 />
             )}
+
+            <EditFlowModal
+                open={isEditModalOpen}
+                flow={selectedFlow}
+                onClose={() => setIsEditModalOpen(false)}
+                onSave={updateFlow}
+            />
         </div>
     );
 };
