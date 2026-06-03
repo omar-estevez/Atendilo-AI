@@ -34,7 +34,7 @@ export const AiActivitySection = () => {
                                     initial={{ opacity: 0, y: 8 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: -8 }}
-                                    className="flex items-start gap-3 rounded-xl border border-border/40 bg-background/35 p-3"
+                                    className="flex items-start gap-3 rounded-xl border border-border/40 bg-background/35 p-4"
                                 >
                                     <div
                                         className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${getActivityStatusClass(

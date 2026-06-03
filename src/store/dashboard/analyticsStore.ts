@@ -4,12 +4,18 @@ import {
     type AnalyticsOverview,
     type BookingAnalytics,
     type ChannelAnalytics,
+    type LeadIntelligenceAnalytics,
+    type BreakdownItem,
 } from "@/services/dashboard/analyticsService";
 
 interface AnalyticsStore {
     overview: AnalyticsOverview | null;
     channelAnalytics: ChannelAnalytics[];
     bookingAnalytics: BookingAnalytics[];
+    leadIntelligence: LeadIntelligenceAnalytics | null;
+    intentBreakdown: BreakdownItem[];
+    sentimentBreakdown: BreakdownItem[];
+    statusBreakdown: BreakdownItem[];
 
     isLoading: boolean;
     error: string | null;
@@ -23,6 +29,11 @@ export const useAnalyticsStore = create<AnalyticsStore>((set) => ({
     channelAnalytics: [],
     bookingAnalytics: [],
 
+    leadIntelligence: null,
+    intentBreakdown: [],
+    sentimentBreakdown: [],
+    statusBreakdown: [],
+
     isLoading: false,
     error: null,
 
@@ -30,17 +41,32 @@ export const useAnalyticsStore = create<AnalyticsStore>((set) => ({
         try {
             set({ isLoading: true, error: null });
 
-            const [overview, channelAnalytics, bookingAnalytics] =
-                await Promise.all([
-                    analyticsService.getOverview(),
-                    analyticsService.getChannelAnalytics(),
-                    analyticsService.getBookingAnalytics(),
-                ]);
+            const [
+                overview,
+                channelAnalytics,
+                bookingAnalytics,
+                leadIntelligence,
+                intentBreakdown,
+                sentimentBreakdown,
+                statusBreakdown,
+            ] = await Promise.all([
+                analyticsService.getOverview(),
+                analyticsService.getChannelAnalytics(),
+                analyticsService.getBookingAnalytics(),
+                analyticsService.getLeadIntelligence(),
+                analyticsService.getIntentBreakdown(),
+                analyticsService.getSentimentBreakdown(),
+                analyticsService.getStatusBreakdown(),
+            ]);
 
             set({
                 overview,
                 channelAnalytics,
                 bookingAnalytics,
+                leadIntelligence,
+                intentBreakdown,
+                sentimentBreakdown,
+                statusBreakdown,
                 isLoading: false,
             });
         } catch (error) {

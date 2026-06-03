@@ -13,6 +13,11 @@ export interface AnalyticsOverview {
     estimatedRevenue: number;
     activeChannels: number;
     aiActivityEvents: number;
+
+    pendingConversations: number;
+    humanHandoffs: number;
+    pendingFollowUps: number;
+    hotLeads: number;
 }
 
 export interface ChannelAnalytics {
@@ -25,6 +30,20 @@ export interface BookingAnalytics {
     status: string;
     count: number;
     value: number;
+}
+
+export interface LeadIntelligenceAnalytics {
+    totalLeads: number;
+    hotLeads: number;
+    warmLeads: number;
+    coldLeads: number;
+    pendingFollowUps: number;
+    humanHandoffs: number;
+}
+
+export interface BreakdownItem {
+    label: string;
+    count: number;
 }
 
 export const analyticsService = {
@@ -41,6 +60,10 @@ export const analyticsService = {
             completedBookingsResult,
             channelsResult,
             aiActivityResult,
+            pendingConversationsResult,
+            humanHandoffsResult,
+            pendingFollowUpsResult,
+            hotLeadsResult,
         ] = await Promise.all([
             supabase.from("contacts").select("id", { count: "exact", head: true }),
 
@@ -86,6 +109,25 @@ export const analyticsService = {
             supabase
                 .from("ai_activity_logs")
                 .select("id", { count: "exact", head: true }),
+            supabase
+                .from("conversations")
+                .select("id", { count: "exact", head: true })
+                .eq("status", "pending"),
+
+            supabase
+                .from("conversations")
+                .select("id", { count: "exact", head: true })
+                .eq("needs_human", true),
+
+            supabase
+                .from("conversations")
+                .select("id", { count: "exact", head: true })
+                .eq("follow_up_required", true),
+
+            supabase
+                .from("conversations")
+                .select("id", { count: "exact", head: true })
+                .gte("ai_score", 85),
         ]);
 
         const results = [
@@ -100,6 +142,10 @@ export const analyticsService = {
             completedBookingsResult,
             channelsResult,
             aiActivityResult,
+            pendingConversationsResult,
+            humanHandoffsResult,
+            pendingFollowUpsResult,
+            hotLeadsResult,
         ];
 
         const firstError = results.find((result) => result.error)?.error;
@@ -128,6 +174,10 @@ export const analyticsService = {
             estimatedRevenue,
             activeChannels: channelsResult.count || 0,
             aiActivityEvents: aiActivityResult.count || 0,
+            pendingConversations: pendingConversationsResult.count || 0,
+            humanHandoffs: humanHandoffsResult.count || 0,
+            pendingFollowUps: pendingFollowUpsResult.count || 0,
+            hotLeads: hotLeadsResult.count || 0,
         };
     },
 
@@ -220,5 +270,122 @@ export const analyticsService = {
         });
 
         return Array.from(grouped.values());
+    },
+
+    async getLeadIntelligence(): Promise<LeadIntelligenceAnalytics> {
+        const leadIntents = [
+            "booking_request",
+            "price_question",
+            "service_question",
+            "human_handoff",
+            "complaint",
+        ];
+
+        const { data, error } = await supabase
+            .from("conversations")
+            .select("id, intent, ai_score, needs_human, follow_up_required");
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        const leads = (data || []).filter((conversation) => {
+            const score = conversation.ai_score || 0;
+            const intent = conversation.intent || "";
+
+            return leadIntents.includes(intent) || score >= 75;
+        });
+
+        const hotLeads = leads.filter(
+            (conversation) => Number(conversation.ai_score || 0) >= 85
+        ).length;
+
+        const warmLeads = leads.filter((conversation) => {
+            const score = Number(conversation.ai_score || 0);
+            return score >= 60 && score < 85;
+        }).length;
+
+        const coldLeads = leads.filter(
+            (conversation) => Number(conversation.ai_score || 0) < 60
+        ).length;
+
+        return {
+            totalLeads: leads.length,
+            hotLeads,
+            warmLeads,
+            coldLeads,
+            pendingFollowUps: leads.filter(
+                (conversation) => conversation.follow_up_required === true
+            ).length,
+            humanHandoffs: leads.filter(
+                (conversation) => conversation.needs_human === true
+            ).length,
+        };
+    },
+
+    async getIntentBreakdown(): Promise<BreakdownItem[]> {
+        const { data, error } = await supabase
+            .from("conversations")
+            .select("intent");
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        const grouped = new Map<string, number>();
+
+        data?.forEach((conversation) => {
+            const key = conversation.intent || "unknown";
+            grouped.set(key, (grouped.get(key) || 0) + 1);
+        });
+
+        return Array.from(grouped.entries()).map(([label, count]) => ({
+            label,
+            count,
+        }));
+    },
+
+    async getSentimentBreakdown(): Promise<BreakdownItem[]> {
+        const { data, error } = await supabase
+            .from("conversations")
+            .select("sentiment");
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        const grouped = new Map<string, number>();
+
+        data?.forEach((conversation) => {
+            const key = conversation.sentiment || "unknown";
+            grouped.set(key, (grouped.get(key) || 0) + 1);
+        });
+
+        return Array.from(grouped.entries()).map(([label, count]) => ({
+            label,
+            count,
+        }));
+    },
+
+    async getStatusBreakdown(): Promise<BreakdownItem[]> {
+        const { data, error } = await supabase
+            .from("conversations")
+            .select("status");
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        const grouped = new Map<string, number>();
+
+        data?.forEach((conversation) => {
+            const key = conversation.status || "unknown";
+            grouped.set(key, (grouped.get(key) || 0) + 1);
+        });
+
+        return Array.from(grouped.entries()).map(([label, count]) => ({
+            label,
+            count,
+        }));
     },
 };

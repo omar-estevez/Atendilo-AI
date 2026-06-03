@@ -15,29 +15,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAnalyticsStore } from "@/store/dashboard/analyticsStore";
+import { getPercent, formatNumber, formatCurrency, formatLabel, getBreakdownPercent } from "./helpers/AnalyticsHelpers";
 
-const formatNumber = (value: number) => {
-    return new Intl.NumberFormat("en-US").format(value);
-};
 
-const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        maximumFractionDigits: 0,
-    }).format(value);
-};
-
-const getPercent = (value: number, total: number) => {
-    if (!total) return 0;
-    return Math.round((value / total) * 100);
-};
 
 export const AnalyticsPage = () => {
     const {
         overview,
         channelAnalytics,
         bookingAnalytics,
+        leadIntelligence,
+        intentBreakdown,
+        sentimentBreakdown,
         isLoading,
         error,
         loadAnalytics,
@@ -46,10 +35,6 @@ export const AnalyticsPage = () => {
     useEffect(() => {
         loadAnalytics();
     }, [loadAnalytics]);
-
-    const conversionRate = overview
-        ? getPercent(overview.closedConversations, overview.totalConversations)
-        : 0;
 
     const aiAutomationRate = overview
         ? getPercent(overview.aiMessages, overview.totalMessages)
@@ -147,14 +132,14 @@ export const AnalyticsPage = () => {
                     <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/15">
                         <TrendingUp className="h-5 w-5 text-amber-400" />
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                        Conversion Rate
-                    </p>
-                    <h3 className="mt-2 text-3xl font-bold text-amber-400">
-                        {isLoading || !overview ? "..." : `${conversionRate}%`}
+                    <p className="text-sm text-muted-foreground">Human Handoff</p>
+                    <h3 className="text-3xl font-bold text-yellow-400">
+                        {isLoading || !leadIntelligence
+                            ? "..."
+                            : formatNumber(leadIntelligence.humanHandoffs)}
                     </h3>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                        Based on closed conversations
+                    <p className="text-xs text-muted-foreground">
+                        Conversations needing human attention
                     </p>
                 </Card>
             </div>
@@ -286,6 +271,169 @@ export const AnalyticsPage = () => {
                             </div>
                         )}
                     </div>
+                </Card>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-4">
+                <Card className="p-5 border-border/60 bg-card/60">
+                    <div className="flex items-center gap-2 mb-4">
+                        <TrendingUp className="w-4 h-4 text-primary" />
+                        <div>
+                            <h3 className="font-semibold">Lead Intelligence</h3>
+                            <p className="text-sm text-muted-foreground">
+                                Lead temperature and follow-up opportunities.
+                            </p>
+                        </div>
+                    </div>
+
+                    {leadIntelligence ? (
+                        <div className="space-y-3">
+                            <div className="rounded-xl border border-border/60 bg-background/40 p-4">
+                                <p className="text-xs text-muted-foreground">Total Leads</p>
+                                <p className="mt-1 text-2xl font-bold">
+                                    {formatNumber(leadIntelligence.totalLeads)}
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3">
+                                    <p className="text-xs text-red-400">Hot</p>
+                                    <p className="mt-1 text-xl font-bold text-red-400">
+                                        {leadIntelligence.hotLeads}
+                                    </p>
+                                </div>
+
+                                <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-3">
+                                    <p className="text-xs text-yellow-400">Warm</p>
+                                    <p className="mt-1 text-xl font-bold text-yellow-400">
+                                        {leadIntelligence.warmLeads}
+                                    </p>
+                                </div>
+
+                                <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-3">
+                                    <p className="text-xs text-blue-400">Cold</p>
+                                    <p className="mt-1 text-xl font-bold text-blue-400">
+                                        {leadIntelligence.coldLeads}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2 pt-2">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Pending Follow-ups</span>
+                                    <span className="font-semibold">
+                                        {leadIntelligence.pendingFollowUps}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Human Handoffs</span>
+                                    <span className="font-semibold">
+                                        {leadIntelligence.humanHandoffs}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+                            No lead intelligence yet.
+                        </div>
+                    )}
+                </Card>
+
+                <Card className="p-5 border-border/60 bg-card/60">
+                    <div className="flex items-center gap-2 mb-4">
+                        <BarChart3 className="w-4 h-4 text-primary" />
+                        <div>
+                            <h3 className="font-semibold">Intent Breakdown</h3>
+                            <p className="text-sm text-muted-foreground">
+                                What customers are asking for.
+                            </p>
+                        </div>
+                    </div>
+
+                    {intentBreakdown.length > 0 ? (
+                        <div className="space-y-4">
+                            {intentBreakdown.slice(0, 6).map((item) => {
+                                const percentage = getBreakdownPercent(item.count, intentBreakdown);
+
+                                return (
+                                    <div key={item.label} className="space-y-2">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className="text-sm font-medium">
+                                                {formatLabel(item.label)}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground">
+                                                {item.count}
+                                            </span>
+                                        </div>
+
+                                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                            <div
+                                                className="h-full rounded-full bg-primary"
+                                                style={{ width: `${percentage}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+                            No intent data yet.
+                        </div>
+                    )}
+                </Card>
+
+                <Card className="p-5 border-border/60 bg-card/60">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Activity className="w-4 h-4 text-primary" />
+                        <div>
+                            <h3 className="font-semibold">Sentiment Breakdown</h3>
+                            <p className="text-sm text-muted-foreground">
+                                Customer mood across conversations.
+                            </p>
+                        </div>
+                    </div>
+
+                    {sentimentBreakdown.length > 0 ? (
+                        <div className="space-y-4">
+                            {sentimentBreakdown.map((item) => {
+                                const percentage = getBreakdownPercent(
+                                    item.count,
+                                    sentimentBreakdown
+                                );
+
+                                return (
+                                    <div key={item.label} className="space-y-2">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className="text-sm font-medium">
+                                                {formatLabel(item.label)}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground">
+                                                {item.count}
+                                            </span>
+                                        </div>
+
+                                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                            <div
+                                                className="h-full rounded-full bg-primary"
+                                                style={{ width: `${percentage}%` }}
+                                            />
+                                        </div>
+
+                                        <p className="text-xs text-muted-foreground">
+                                            {percentage}% of analyzed conversations
+                                        </p>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+                            No sentiment data yet.
+                        </div>
+                    )}
                 </Card>
             </div>
 
