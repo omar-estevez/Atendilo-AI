@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
-    // AlertTriangle,
     Mail,
     MessageSquare,
     Phone,
@@ -29,6 +28,8 @@ export const LeadsPage = () => {
         error,
         loadLeads,
         selectLead,
+        markFollowUp,
+        clearFollowUp
     } = useLeadsStore();
 
     const { hasPermission } = useAuthStore();
@@ -233,6 +234,12 @@ export const LeadsPage = () => {
                                                                 {formatLabel(lead.urgency)}
                                                             </span>
                                                         )}
+
+                                                        {lead.followUpRequired && (
+                                                            <span className="rounded-full border border-blue-500/40 text-blue-400 px-2 py-0.5 text-[11px]">
+                                                                Follow-up
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -355,6 +362,26 @@ export const LeadsPage = () => {
                                     </p>
                                 </div>
 
+                                {selectedLead.followUpRequired && (
+                                    <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-4 mt-4">
+                                        <p className="text-sm font-medium text-blue-400">
+                                            Follow-up Required
+                                        </p>
+
+                                        <p className="mt-1 text-xs text-muted-foreground">
+                                            {selectedLead.followUpAt
+                                                ? new Date(selectedLead.followUpAt).toLocaleString()
+                                                : "Marked for follow-up"}
+                                        </p>
+
+                                        {selectedLead.followUpNote && (
+                                            <p className="mt-2 text-sm text-muted-foreground">
+                                                {selectedLead.followUpNote}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+
                                 <div className="mt-5 grid gap-4 md:grid-cols-2">
                                     <div className="rounded-xl border border-border/60 bg-background/40 p-4">
                                         <p className="text-xs text-muted-foreground">
@@ -387,8 +414,24 @@ export const LeadsPage = () => {
                                         Open Conversation
                                     </Button>
 
-                                    <Button variant="outline" disabled={!canEditLead}>
-                                        Mark Follow-up
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            if (!selectedLead) return;
+
+                                            if (selectedLead.followUpRequired) {
+                                                clearFollowUp(selectedLead.conversationId);
+                                                return;
+                                            }
+
+                                            markFollowUp(
+                                                selectedLead.conversationId,
+                                                "Follow-up marked from lead details."
+                                            );
+                                        }}
+                                        disabled={!canEditLead}
+                                    >
+                                        {selectedLead?.followUpRequired ? "Remove Follow-up" : "Mark Follow-up"}
                                     </Button>
 
                                     <Button

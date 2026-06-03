@@ -16,4 +16,7 @@ export interface Lead {
     aiScore: number
     value: number
     createdAt: string
+    followUpRequired: boolean;
+    followUpAt: string | null;
+    followUpNote: string | null;
 }

@@ -19,6 +19,9 @@ export interface LeadConversation {
     ai_summary: string | null;
     contacts: Contact | null;
     channels: Channel | null;
+    follow_up_required: boolean | null;
+    follow_up_at: string | null;
+    follow_up_note: string | null;
 }
 
 export type LeadStatus = "hot" | "warm" | "cold";
@@ -42,6 +45,9 @@ export interface LeadItem {
     lastActivityAt: string | null;
     createdAt: string;
     conversationId: string;
+    followUpRequired: boolean;
+    followUpAt: string | null;
+    followUpNote: string | null;
 }
 
 const getLeadStatus = (score: number): LeadStatus => {
@@ -110,7 +116,48 @@ export const leadsService = {
                     aiSummary: conversation.ai_summary,
                     lastActivityAt: conversation.last_message_at,
                     createdAt: conversation.created_at,
+                    followUpRequired: conversation.follow_up_required || false,
+                    followUpAt: conversation.follow_up_at || null,
+                    followUpNote: conversation.follow_up_note || null,
                 } satisfies LeadItem;
             });
+    },
+
+    async markFollowUp(conversationId: string, note?: string) {
+        const { data, error } = await supabase
+            .from("conversations")
+            .update({
+                follow_up_required: true,
+                follow_up_at: new Date().toISOString(),
+                follow_up_note: note || null,
+            })
+            .eq("id", conversationId)
+            .select(`
+      *,
+      contacts (*),
+      channels (*)
+    `)
+            .single();
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        return data;
+    },
+
+    async clearFollowUp(conversationId: string) {
+        const { error } = await supabase
+            .from("conversations")
+            .update({
+                follow_up_required: false,
+                follow_up_at: null,
+                follow_up_note: null,
+            })
+            .eq("id", conversationId);
+
+        if (error) {
+            throw new Error(error.message);
+        }
     }
 };
