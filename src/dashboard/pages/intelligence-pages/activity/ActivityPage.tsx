@@ -1,37 +1,72 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
-    Filter,
+    Activity,
+    AlertTriangle,
+    CheckCircle2,
+    Clock,
+    ExternalLink,
     RefreshCw,
     Search,
+    XCircle,
 } from "lucide-react";
-
+import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAIActivityStore } from "@/store/dashboard/aiActivityStore";
 import type {
-    AIActivityStatus,
-    AIActivityType,
-} from "@/services/dashboard/aiActivityService";
-import { useNavigate } from "react-router";
-import { activityStatuses, activityTypes, formatLabel, formatTime, getActivityContainerClass, getActivityIcon, getContactDisplayName, getConversationDescription, getStatusClass, getStatusIcon, type AIActivityStatusFilter, type AIActivityTypeFilter } from "./helpers/ActivityHelper";
+    AIActivityStatusFilter,
+    AIActivityTypeFilter,
+} from "./helpers/ActivityHelper";
+import {
+    activityStatuses,
+    activityTypes,
+    formatLabel,
+    formatTime,
+    getActivityIcon,
+    getContactDisplayName,
+    getConversationDescription,
+    getStatusClass,
+    getStatusIcon,
+} from "./helpers/ActivityHelper";
+
+const statCards = [
+    {
+        id: "total",
+        label: "Total Events",
+        icon: Activity,
+        className: "text-primary",
+    },
+    {
+        id: "success",
+        label: "Successful",
+        icon: CheckCircle2,
+        className: "text-emerald-400",
+    },
+    {
+        id: "warning",
+        label: "Warnings",
+        icon: AlertTriangle,
+        className: "text-yellow-400",
+    },
+    {
+        id: "error",
+        label: "Errors",
+        icon: XCircle,
+        className: "text-red-400",
+    },
+];
 
 export const ActivityPage = () => {
-
     const navigate = useNavigate();
 
-    const {
-        logs,
-        selectedLog,
-        isLoading,
-        error,
-        loadLogs,
-        selectLog,
-    } = useAIActivityStore();
+    const { logs, selectedLog, isLoading, error, loadLogs, selectLog } =
+        useAIActivityStore();
 
     const [searchTerm, setSearchTerm] = useState("");
     const [typeFilter, setTypeFilter] = useState<AIActivityTypeFilter>("all");
-    const [statusFilter, setStatusFilter] = useState<AIActivityStatusFilter>("all");
+    const [statusFilter, setStatusFilter] =
+        useState<AIActivityStatusFilter>("all");
 
     useEffect(() => {
         loadLogs({
@@ -47,9 +82,9 @@ export const ActivityPage = () => {
             return (
                 log.title.toLowerCase().includes(search) ||
                 (log.description || "").toLowerCase().includes(search) ||
-                JSON.stringify(log.metadata || {})
-                    .toLowerCase()
-                    .includes(search)
+                getContactDisplayName(log).toLowerCase().includes(search) ||
+                getConversationDescription(log).toLowerCase().includes(search) ||
+                JSON.stringify(log.metadata || {}).toLowerCase().includes(search)
             );
         });
     }, [logs, searchTerm]);
@@ -63,21 +98,25 @@ export const ActivityPage = () => {
         };
     }, [logs]);
 
+    const selectedContactName = getContactDisplayName(selectedLog || undefined);
+    const selectedConversationDescription = getConversationDescription(
+        selectedLog || undefined
+    );
+
     return (
-        <div className="h-full px-5 py-6 sm:px-7 lg:px-8">
-            <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-6 pb-8">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">
-                        AI Activity
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Monitor how Atendilo AI is handling customer actions,
-                        replies, leads and workflows.
+                    <h1 className="text-3xl font-bold tracking-tight">AI Activity</h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Monitor how Atendilo AI is handling customer actions, replies, leads
+                        and workflows.
                     </p>
                 </div>
 
                 <Button
                     variant="outline"
+                    size="sm"
                     onClick={() =>
                         loadLogs({
                             type: typeFilter,
@@ -85,60 +124,56 @@ export const ActivityPage = () => {
                         })
                     }
                     disabled={isLoading}
+                    className="w-fit"
                 >
                     <RefreshCw
-                        className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""
-                            }`}
+                        className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
                     />
                     Refresh
                 </Button>
             </div>
 
             {error && (
-                <Card className="mb-4 border-red-500/30 bg-red-500/10 p-4">
-                    <p className="text-sm text-red-400">{error}</p>
-                </Card>
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+                    {error}
+                </div>
             )}
 
-            <div className="mb-5 grid gap-4 md:grid-cols-4">
-                <Card className="border-border/50 bg-card/60 p-4">
-                    <p className="text-sm text-muted-foreground">Total Events</p>
-                    <h3 className="mt-2 text-3xl font-bold">{stats.total}</h3>
-                </Card>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {statCards.map((card) => {
+                    const Icon = card.icon;
+                    const value = stats[card.id as keyof typeof stats];
 
-                <Card className="border-border/50 bg-card/60 p-4">
-                    <p className="text-sm text-muted-foreground">Successful</p>
-                    <h3 className="mt-2 text-3xl font-bold text-emerald-400">
-                        {stats.success}
-                    </h3>
-                </Card>
+                    return (
+                        <Card
+                            key={card.id}
+                            className="overflow-hidden border-border/60 bg-card/60 p-5"
+                        >
+                            <div className="flex items-start justify-between">
+                                <div>
+                                    <p className="text-sm text-muted-foreground">{card.label}</p>
+                                    <h3 className={`mt-6 text-3xl font-bold ${card.className}`}>
+                                        {isLoading ? "..." : value}
+                                    </h3>
+                                </div>
 
-                <Card className="border-border/50 bg-card/60 p-4">
-                    <p className="text-sm text-muted-foreground">Warnings</p>
-                    <h3 className="mt-2 text-3xl font-bold text-amber-400">
-                        {stats.warning}
-                    </h3>
-                </Card>
-
-                <Card className="border-border/50 bg-card/60 p-4">
-                    <p className="text-sm text-muted-foreground">Errors</p>
-                    <h3 className="mt-2 text-3xl font-bold text-red-400">
-                        {stats.error}
-                    </h3>
-                </Card>
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                    <Icon className="h-5 w-5" />
+                                </div>
+                            </div>
+                        </Card>
+                    );
+                })}
             </div>
 
-            <div className="grid h-[calc(100vh-300px)] min-h-[620px] grid-cols-1 gap-5 xl:grid-cols-[520px_1fr]">
-                <Card className="flex min-h-0 flex-col overflow-hidden border-border/50 bg-card/60">
-                    <div className="border-b border-border/50 bg-background/30 p-4">
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[430px_minmax(0,1fr)]">
+                <Card className="h-[690px] overflow-hidden border-border/60 bg-card/60">
+                    <div className="border-b border-border/60 p-4">
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <input
                                 value={searchTerm}
-                                onChange={(event) =>
-                                    setSearchTerm(event.target.value)
-                                }
+                                onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search AI activity..."
                                 className="h-10 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
                             />
@@ -146,19 +181,13 @@ export const ActivityPage = () => {
 
                         <div className="mt-3 grid grid-cols-2 gap-3">
                             <div>
-                                <label className="mb-1.5 flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                                    <Filter className="h-3.5 w-3.5" />
+                                <label className="mb-1 block text-xs text-muted-foreground">
                                     Type
                                 </label>
-
                                 <select
                                     value={typeFilter}
                                     onChange={(event) =>
-                                        setTypeFilter(
-                                            event.target.value as
-                                            | AIActivityType
-                                            | "all"
-                                        )
+                                        setTypeFilter(event.target.value as AIActivityTypeFilter)
                                     }
                                     className="h-9 w-full rounded-lg border border-border bg-background px-2 text-xs outline-none focus:border-primary"
                                 >
@@ -171,17 +200,14 @@ export const ActivityPage = () => {
                             </div>
 
                             <div>
-                                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                                <label className="mb-1 block text-xs text-muted-foreground">
                                     Status
                                 </label>
-
                                 <select
                                     value={statusFilter}
                                     onChange={(event) =>
                                         setStatusFilter(
-                                            event.target.value as
-                                            | AIActivityStatus
-                                            | "all"
+                                            event.target.value as AIActivityStatusFilter
                                         )
                                     }
                                     className="h-9 w-full rounded-lg border border-border bg-background px-2 text-xs outline-none focus:border-primary"
@@ -196,81 +222,72 @@ export const ActivityPage = () => {
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto">
+                    <div className="h-[570px] overflow-y-auto custom-scrollbar">
                         {isLoading ? (
-                            <div className="flex h-full items-center justify-center">
-                                <p className="text-sm text-muted-foreground">
-                                    Loading AI activity...
-                                </p>
+                            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                                Loading AI activity...
                             </div>
                         ) : filteredLogs.length > 0 ? (
                             <div className="divide-y divide-border/50">
                                 {filteredLogs.map((log, index) => {
-                                    const isSelected =
-                                        selectedLog?.id === log.id;
+                                    const isSelected = selectedLog?.id === log.id;
+                                    const contactName = getContactDisplayName(log);
 
                                     return (
                                         <motion.button
                                             key={log.id}
                                             initial={{ opacity: 0, y: 8 }}
                                             animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: index * 0.03 }}
+                                            transition={{ delay: index * 0.025 }}
                                             onClick={() => selectLog(log)}
                                             className={[
                                                 "w-full p-4 text-left transition-colors",
-                                                isSelected
-                                                    ? "bg-primary/10"
-                                                    : "hover:bg-secondary/40",
+                                                isSelected ? "bg-primary/10" : "hover:bg-secondary/40",
                                             ].join(" ")}
                                         >
                                             <div className="flex gap-3">
                                                 <div
-                                                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${getActivityContainerClass(
-                                                        log.status
-                                                    )}`}
+                                                    className={[
+                                                        "mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border",
+                                                        getStatusClass(log.status),
+                                                    ].join(" ")}
                                                 >
                                                     {getActivityIcon(log.type)}
                                                 </div>
 
                                                 <div className="min-w-0 flex-1">
-                                                    <div className="flex items-start justify-between gap-2">
-                                                        <div className="min-w-0">
-                                                            <p className="truncate font-semibold">
-                                                                {log.title}
-                                                            </p>
-
-                                                            <p className="text-sm text-muted-foreground line-clamp-2">
-                                                                {log.description || "No description"}
-                                                            </p>
-
-                                                            <p className="mt-1 text-xs text-muted-foreground">
-                                                                {getContactDisplayName(log)}
-                                                            </p>
-                                                        </div>
-
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <h3 className="line-clamp-1 text-sm font-semibold">
+                                                            {log.title}
+                                                        </h3>
                                                         <span className="shrink-0 text-xs text-muted-foreground">
-                                                            {formatTime(
-                                                                log.created_at
-                                                            )}
+                                                            {formatTime(log.created_at)}
                                                         </span>
                                                     </div>
 
-                                                    <div className="mt-3 flex flex-wrap gap-1.5">
+                                                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                                                        {log.description || "No description"}
+                                                    </p>
+
+                                                    <p className="mt-1 text-xs text-muted-foreground">
+                                                        {contactName}
+                                                    </p>
+
+                                                    <div className="mt-3 flex flex-wrap gap-2">
                                                         <span
-                                                            className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] capitalize ${getStatusClass(
-                                                                log.status
-                                                            )}`}
+                                                            className={[
+                                                                "inline-flex items-center rounded-full border px-2 py-0.5 text-xs",
+                                                                getStatusClass(log.status),
+                                                            ].join(" ")}
                                                         >
-                                                            {getStatusIcon(
-                                                                log.status
-                                                            )}
-                                                            {log.status}
+                                                            {getStatusIcon(log.status)}
+                                                            <span className="ml-1">
+                                                                {formatLabel(log.status)}
+                                                            </span>
                                                         </span>
 
-                                                        <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
-                                                            {formatLabel(
-                                                                log.type
-                                                            )}
+                                                        <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                                                            {formatLabel(log.type)}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -280,13 +297,9 @@ export const ActivityPage = () => {
                                 })}
                             </div>
                         ) : (
-                            <div className="flex h-full flex-col items-center justify-center p-6 text-center">
-                                <img
-                                    src="/icon.png"
-                                    alt="Icono"
-                                    className="w-11 h-11 object-contain"
-                                />
-                                <p className="font-medium">No activity found</p>
+                            <div className="flex h-full flex-col items-center justify-center px-8 text-center">
+                                <Activity className="mb-3 h-10 w-10 text-muted-foreground" />
+                                <h3 className="font-semibold">No activity found</h3>
                                 <p className="mt-1 text-sm text-muted-foreground">
                                     Try changing your filters or search term.
                                 </p>
@@ -295,156 +308,150 @@ export const ActivityPage = () => {
                     </div>
                 </Card>
 
-                <Card className="flex min-h-0 flex-col overflow-hidden border-border/50 bg-card/60">
+                <Card className="min-h-[690px] overflow-hidden border-border/60 bg-card/60">
                     {selectedLog ? (
                         <div className="flex h-full flex-col">
-                            <div className="border-b border-border/50 p-5">
-                                <div className="flex items-start gap-4">
-                                    <div
-                                        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${getActivityContainerClass(
-                                            selectedLog.status
-                                        )}`}
-                                    >
-                                        {getActivityIcon(selectedLog.type)}
-                                    </div>
-
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <h2 className="text-xl font-semibold">
-                                                {selectedLog.title}
-                                            </h2>
-
-                                            <span
-                                                className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs capitalize ${getStatusClass(
-                                                    selectedLog.status
-                                                )}`}
-                                            >
-                                                {getStatusIcon(
-                                                    selectedLog.status
-                                                )}
-                                                {selectedLog.status}
-                                            </span>
+                            <div className="border-b border-border/60 p-6">
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                    <div className="flex gap-4">
+                                        <div
+                                            className={[
+                                                "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border",
+                                                getStatusClass(selectedLog.status),
+                                            ].join(" ")}
+                                        >
+                                            {getActivityIcon(selectedLog.type)}
                                         </div>
 
-                                        <p className="mt-2 text-sm text-muted-foreground">
-                                            {selectedLog.description ||
-                                                "No description available."}
-                                        </p>
+                                        <div>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <h2 className="text-xl font-bold">
+                                                    {selectedLog.title}
+                                                </h2>
 
-                                        <p className="mt-3 text-xs text-muted-foreground">
-                                            {new Intl.DateTimeFormat("en-US", {
-                                                dateStyle: "medium",
-                                                timeStyle: "short",
-                                            }).format(
-                                                new Date(selectedLog.created_at)
-                                            )}
-                                        </p>
+                                                <span
+                                                    className={[
+                                                        "inline-flex items-center rounded-full border px-2.5 py-1 text-xs",
+                                                        getStatusClass(selectedLog.status),
+                                                    ].join(" ")}
+                                                >
+                                                    {getStatusIcon(selectedLog.status)}
+                                                    <span className="ml-1">
+                                                        {formatLabel(selectedLog.status)}
+                                                    </span>
+                                                </span>
+                                            </div>
+
+                                            <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+                                                {selectedLog.description || "No description available."}
+                                            </p>
+
+                                            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                                                <Clock className="h-3.5 w-3.5" />
+                                                {new Intl.DateTimeFormat("en-US", {
+                                                    dateStyle: "medium",
+                                                    timeStyle: "short",
+                                                }).format(new Date(selectedLog.created_at))}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-5">
-                                <div className="mb-5 grid gap-4 md:grid-cols-2">
-                                    <div className="rounded-xl border border-border/60 bg-background/40 p-4">
+                            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                                    <div className="rounded-2xl border border-border/60 bg-background/40 p-4">
                                         <p className="text-xs text-muted-foreground">
                                             Activity Type
                                         </p>
-                                        <p className="mt-1 font-medium">
+                                        <p className="mt-2 font-semibold">
                                             {formatLabel(selectedLog.type)}
                                         </p>
                                     </div>
 
-                                    <div className="rounded-xl border border-border/60 bg-background/40 p-4">
+                                    <div className="rounded-2xl border border-border/60 bg-background/40 p-4">
+                                        <p className="text-xs text-muted-foreground">Status</p>
+                                        <p className="mt-2 font-semibold">
+                                            {formatLabel(selectedLog.status)}
+                                        </p>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-border/60 bg-background/40 p-4">
                                         <p className="text-xs text-muted-foreground">
-                                            Status
+                                            Conversation
                                         </p>
-                                        <p className="mt-1 font-medium capitalize">
-                                            {selectedLog.status}
+
+                                        <p className="mt-2 text-sm font-semibold leading-6">
+                                            {selectedConversationDescription}
                                         </p>
+
+                                        {selectedLog.conversation_id && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="mt-4"
+                                                onClick={() =>
+                                                    navigate(
+                                                        `/dashboard/conversations?conversationId=${selectedLog.conversation_id}`
+                                                    )
+                                                }
+                                            >
+                                                Open Conversation
+                                                <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                                            </Button>
+                                        )}
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="rounded-xl border border-border/60 bg-background/40 p-4">
-                                            <p className="text-xs text-muted-foreground">Conversation</p>
+                                    <div className="rounded-2xl border border-border/60 bg-background/40 p-4">
+                                        <p className="text-xs text-muted-foreground">Contact</p>
 
-                                            <p className="mt-2 text-sm font-semibold">
-                                                {selectedLog.conversation
-                                                    ? getConversationDescription(selectedLog)
-                                                    : "No conversation linked"}
+                                        <p className="mt-2 text-sm font-semibold">
+                                            {selectedContactName}
+                                        </p>
+
+                                        {selectedLog.contact?.email && (
+                                            <p className="mt-1 text-xs text-muted-foreground">
+                                                {selectedLog.contact.email}
                                             </p>
+                                        )}
 
-                                            {selectedLog.conversation_id && (
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="mt-4"
-                                                    onClick={() =>
-                                                        navigate(
-                                                            `/dashboard/conversations?conversationId=${selectedLog.conversation_id}`
-                                                        )
-                                                    }
-                                                >
-                                                    Open Conversation
-                                                </Button>
-                                            )}
-                                        </div>
-
-                                        <div className="rounded-xl border border-border/60 bg-background/40 p-4">
-                                            <p className="text-xs text-muted-foreground">Contact</p>
-
-                                            <p className="mt-2 text-sm font-semibold">
-                                                {getContactDisplayName(selectedLog)}
+                                        {selectedLog.contact?.phone && (
+                                            <p className="mt-1 text-xs text-muted-foreground">
+                                                {selectedLog.contact.phone}
                                             </p>
-
-                                            {selectedLog.contact?.email && (
-                                                <p className="mt-1 text-xs text-muted-foreground">
-                                                    {selectedLog.contact.email}
-                                                </p>
-                                            )}
-
-                                            {selectedLog.contact?.phone && (
-                                                <p className="mt-1 text-xs text-muted-foreground">
-                                                    {selectedLog.contact.phone}
-                                                </p>
-                                            )}
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
 
-                                <div className="rounded-2xl border border-border/60 bg-background/40 p-4">
-                                    <details className="rounded-xl border border-border/60 bg-background/40 p-4">
-                                        <summary className="cursor-pointer text-sm font-semibold">
-                                            Technical Details
-                                        </summary>
+                                {selectedLog.conversation?.ai_summary && (
+                                    <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/10 p-4">
+                                        <p className="text-xs font-medium text-primary">
+                                            AI Summary
+                                        </p>
+                                        <p className="mt-2 text-sm text-muted-foreground">
+                                            {selectedLog.conversation.ai_summary}
+                                        </p>
+                                    </div>
+                                )}
 
-                                        <span className="text-xs text-muted-foreground">
-                                            JSON
-                                        </span>
+                                <details className="mt-4 rounded-2xl border border-border/60 bg-background/40 p-4">
+                                    <summary className="cursor-pointer text-sm font-semibold">
+                                        Technical Details
+                                    </summary>
 
-                                        <pre className="mt-4 max-h-[260px] overflow-auto rounded-lg bg-black/30 p-4 text-xs text-muted-foreground custom-scrollbar">
-                                            {JSON.stringify(selectedLog.metadata || {}, null, 2)}
-                                        </pre>
-                                    </details>
-                                </div>
+                                    <pre className="mt-4 max-h-[280px] overflow-auto rounded-xl bg-black/30 p-4 text-xs text-muted-foreground custom-scrollbar">
+                                        {JSON.stringify(selectedLog.metadata || {}, null, 2)}
+                                    </pre>
+                                </details>
                             </div>
                         </div>
                     ) : (
-                        <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-                            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-                                <img
-                                    src="/icon.png"
-                                    alt="Icono"
-                                    className="w-9 h-9 object-contain"
-                                />
-                            </div>
-
-                            <h2 className="text-xl font-semibold">
-                                Select an AI activity
-                            </h2>
-
-                            <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                                Choose an activity from the left to inspect AI
-                                actions, metadata, status and linked records.
+                        <div className="flex h-[690px] flex-col items-center justify-center px-8 text-center">
+                            <Activity className="mb-3 h-12 w-12 text-muted-foreground" />
+                            <h2 className="text-xl font-bold">Select an AI activity</h2>
+                            <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                                Choose an activity from the left to inspect AI actions, linked
+                                conversations, contacts and technical details.
                             </p>
                         </div>
                     )}
