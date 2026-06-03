@@ -318,7 +318,9 @@ export const analyticsService = {
                 (conversation) => conversation.follow_up_required === true
             ).length,
             humanHandoffs: leads.filter(
-                (conversation) => conversation.needs_human === true
+                (conversation) =>
+                    conversation.needs_human === true ||
+                    conversation.intent === "human_handoff"
             ).length,
         };
     },

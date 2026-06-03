@@ -354,7 +354,7 @@ export const AnalyticsPage = () => {
 
                     {intentBreakdown.length > 0 ? (
                         <div className="space-y-4">
-                            {intentBreakdown.slice(0, 6).map((item) => {
+                            {intentBreakdown.slice(0, 6).sort((a, b) => b.count - a.count).map((item) => {
                                 const percentage = getBreakdownPercent(item.count, intentBreakdown);
 
                                 return (
