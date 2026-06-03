@@ -24,6 +24,7 @@ import type {
     EscalationRuleKey,
 } from "@/dashboard/types";
 import { toast } from "sonner";
+import { AiKnowledge } from "./ai-knowledge/AiKnowledge";
 
 type BusinessSettings = {
     services?: BusinessService[];
@@ -392,6 +393,12 @@ export const BusinessPage = () => {
                 inputClass={inputClass}
                 addFaq={addFaq}
                 deleteFaq={deleteFaq}
+            />
+
+            <AiKnowledge
+                sectionHeader={sectionHeader}
+                inputClass={inputClass}
+                smallSelectClass={smallSelectClass}
             />
 
             <BookingRules

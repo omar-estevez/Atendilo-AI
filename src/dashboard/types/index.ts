@@ -15,3 +15,4 @@ export * from "./apiKey"
 export * from "./team"
 export * from "./security"
 export * from "./notification"
+export * from "./knowledgeBase";
