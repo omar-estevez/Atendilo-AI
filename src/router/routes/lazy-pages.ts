@@ -4,8 +4,17 @@ import { lazy } from 'react'
 // *****************************************
 // *************** PUBLIC ******************
 // *****************************************
+export const MainLayout = lazy(() =>
+    import('@/principal/layouts/MainLayout')
+)
+export const HomePage = lazy(() =>
+    import('@/principal/pages/home/HomePage')
+)
 export const ContactPage = lazy(() =>
     import('@/principal/pages/contact/ContactPage')
+)
+export const FormLayout = lazy(() =>
+    import('@/principal/layouts/FormLayout')
 )
 export const LoginPage = lazy(() =>
     import('@/principal/pages/login/LoginPage')
@@ -28,11 +37,23 @@ export const SecurityPage = lazy(() =>
 export const AcceptInvitePage = lazy(() =>
     import('@/principal/pages/accept-invitation/AcceptInvitePage')
 )
+export const ResetPasswordPage = lazy(() =>
+    import('@/principal/pages/reset-password/ResetPasswordPage')
+)
 
 // *****************************************
 // ************* DASHBOARD *****************
 // *****************************************
 
+export const ProtectedRoute = lazy(() =>
+    import('./ProtectedRoute')
+)
+export const DashLayout = lazy(() =>
+    import('@/dashboard/layouts/DashLayout')
+)
+export const MainPage = lazy(() =>
+    import('@/dashboard/pages/main-pages/main/MainPage')
+)
 export const ConversationPage = lazy(() =>
     import('@/dashboard/pages/main-pages/conversation/ConversationPage')
 )
@@ -89,4 +110,10 @@ export const LanguagePage = lazy(() =>
 )
 export const ChannelPage = lazy(() =>
     import('@/dashboard/pages/channel-pages/ChannelPage')
+)
+export const ChannelModuleRoute = lazy(() =>
+    import('./ChannelModuleRoute')
+)
+export const AccessRoute = lazy(() =>
+    import('./AccessRoute')
 )

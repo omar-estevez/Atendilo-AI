@@ -9,3 +9,5 @@ export const FormLayout = () => {
         </>
     )
 }
+
+export default FormLayout;

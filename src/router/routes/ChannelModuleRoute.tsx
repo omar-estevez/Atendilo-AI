@@ -40,3 +40,5 @@ export const ChannelModuleRoute = () => {
 
     return <Outlet />;
 };
+
+export default ChannelModuleRoute;

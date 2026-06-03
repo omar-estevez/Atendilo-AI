@@ -41,3 +41,5 @@ export const AccessRoute = ({
 
     return <Outlet />;
 };
+
+export default AccessRoute;

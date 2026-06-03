@@ -1,12 +1,7 @@
 import { createBrowserRouter } from "react-router";
-import { MainLayout } from "@/principal/layouts/MainLayout";
-import { FormLayout } from "@/principal/layouts/FormLayout";
-import { DashLayout } from "@/dashboard/layouts/DashLayout";
-import { HomePage } from "@/principal/pages/home/HomePage";
-import { MainPage } from "@/dashboard/pages/main-pages/main/MainPage";
-
 import {
     AcceptInvitePage,
+    AccessRoute,
     ActivityPage,
     AnalyticsPage,
     ApiKeysPage,
@@ -14,18 +9,26 @@ import {
     BillingPage,
     BookingsPage,
     BusinessPage,
+    ChannelModuleRoute,
     ChannelPage,
     ContactPage,
     ConversationPage,
+    DashLayout,
     FlowsPage,
     ForgotPasswordPage,
+    FormLayout,
+    HomePage,
     IntegrationsPage,
     LanguagePage,
     LeadsPage,
     LoginPage,
+    MainLayout,
+    MainPage,
     NotificationPage,
     PrivacyPage,
+    ProtectedRoute,
     RegisterPage,
+    ResetPasswordPage,
     SecurityPage,
     SecurityPageDash,
     TeamPage,
@@ -34,11 +37,6 @@ import {
     VoiceAiPage,
     WebhooksPage,
 } from "./routes/lazy-pages";
-
-import { ProtectedRoute } from "./routes/ProtectedRoute";
-import { ChannelModuleRoute } from "./routes/ChannelModuleRoute";
-import { AccessRoute } from "./routes/AccessRoute";
-import ResetPasswordPage from "@/principal/pages/reset-password/ResetPasswordPage";
 
 export const appRouter = createBrowserRouter([
     {
