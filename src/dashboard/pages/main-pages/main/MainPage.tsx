@@ -187,12 +187,11 @@ export const MainPage = () => {
                 })}
             </div>
 
-            {canViewConversations && <FollowUpsSection />}
-
             {(canViewAiActivity || canViewConversations) && (
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     {canViewAiActivity && <AiActivitySection />}
                     {canViewConversations && <ConversationSection />}
+                    {canViewConversations && <FollowUpsSection />}
                 </div>
             )}
 
@@ -267,7 +266,7 @@ export const MainPage = () => {
                                         </div>
 
                                         <p className="text-xs text-muted-foreground">
-                                            {Math.round(percentage)}% used
+                                            {Number(metric.limit) > 0 ? `${Math.round(percentage)}% used` : "Unlimited"}
                                         </p>
                                     </div>
                                 );

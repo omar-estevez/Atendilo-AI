@@ -1,79 +1,78 @@
 import { Card } from "@/components/ui/card";
 import { useDashboardDataStore } from "@/store/dashboard/dashboardDataStore";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Activity } from "lucide-react";
-import { getActivityStatusClass, getActivityIcon, formatActivityTime } from "../helpers/ActivityMainHelpers";
+import {
+    getActivityStatusClass,
+    getActivityIcon,
+    formatActivityTime,
+} from "../helpers/ActivityMainHelpers";
 
 export const AiActivitySection = () => {
-
     const { aiActivityLogs } = useDashboardDataStore();
 
     return (
-        <Card className="lg:col-span-1 border-border/50 overflow-hidden">
-            <div className="p-4 border-b border-border/50 flex items-center justify-between bg-linear-to-r from-primary/5 to-transparent">
+        <Card className="h-[520px] overflow-hidden border-border/60 bg-card/60">
+            <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
                 <div className="flex items-center gap-2">
-                    <div className="relative">
-                        <Activity className="w-5 h-5 text-primary" />
-                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                    </div>
+                    <Activity className="h-4 w-4 text-primary" />
                     <h3 className="font-semibold">AI Activity Center</h3>
                 </div>
 
-                <span className="px-2 py-1 text-xs bg-emerald-500/20 text-emerald-400 rounded-full font-medium">
+                <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400">
                     Live
                 </span>
             </div>
 
-            <div className="divide-y divide-border/50 max-h-120 overflow-y-auto">
-                <AnimatePresence mode="popLayout">
-                    {aiActivityLogs.length > 0 ? (
-                        aiActivityLogs.map((activity) => (
-                            <div
-                                key={activity.id}
-                                className="flex items-start gap-3 border-b border-border/50 px-4 py-4 last:border-0"
-                            >
-                                <div
-                                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${getActivityStatusClass(
-                                        activity.status
-                                    )}`}
+            <div className="h-[456px] overflow-y-auto px-5 py-3 custom-scrollbar">
+                {aiActivityLogs.length > 0 ? (
+                    <AnimatePresence initial={false}>
+                        <div className="space-y-2">
+                            {aiActivityLogs.map((activity) => (
+                                <motion.div
+                                    key={activity.id}
+                                    initial={{ opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -8 }}
+                                    className="flex items-start gap-3 rounded-xl border border-border/40 bg-background/35 p-3"
                                 >
-                                    {getActivityIcon(activity.type)}
-                                </div>
+                                    <div
+                                        className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${getActivityStatusClass(
+                                            activity.type
+                                        )}`}
+                                    >
+                                        {getActivityIcon(activity.type)}
+                                    </div>
 
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0">
-                                            <h4 className="truncate text-sm font-semibold">
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <p className="truncate text-sm font-semibold">
                                                 {activity.title}
-                                            </h4>
-
-                                            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                                                {activity.description || "No description available"}
                                             </p>
+                                            <span className="shrink-0 text-xs text-muted-foreground">
+                                                {formatActivityTime(activity.created_at)}
+                                            </span>
                                         </div>
 
-                                        <span className="shrink-0 text-xs text-muted-foreground">
-                                            {formatActivityTime(activity.created_at)}
-                                        </span>
+                                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                                            {activity.description || "No description available"}
+                                        </p>
                                     </div>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="flex h-48 flex-col items-center justify-center text-center">
-                            <img
-                                src="/icon.png"
-                                alt="Icono"
-                                className="w-8 h-8 object-contain"
-                            />
-                            <p className="text-sm font-medium">No AI activity yet</p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                                Atendilo activity will appear here once AI starts handling conversations.
-                            </p>
+                                </motion.div>
+                            ))}
                         </div>
-                    )}
-                </AnimatePresence>
+                    </AnimatePresence>
+                ) : (
+                    <div className="flex h-full flex-col items-center justify-center text-center">
+                        <Activity className="mb-3 h-9 w-9 text-muted-foreground" />
+                        <p className="text-sm font-medium">No AI activity yet</p>
+                        <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+                            Atendilo activity will appear here once AI starts handling
+                            conversations.
+                        </p>
+                    </div>
+                )}
             </div>
         </Card>
-    )
-}
+    );
+};
