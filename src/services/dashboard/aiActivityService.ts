@@ -12,6 +12,29 @@ export type AIActivityType =
 
 export type AIActivityStatus = "success" | "warning" | "error" | "info";
 
+export interface AIActivityContact {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+}
+
+export interface AIActivityConversation {
+    id: string;
+    status: string | null;
+    intent: string | null;
+    urgency: string | null;
+    sentiment: string | null;
+    ai_score: number | null;
+    ai_summary: string | null;
+    contacts?: AIActivityContact | null;
+    channels?: {
+        id: string;
+        name: string | null;
+        type: string | null;
+    } | null;
+}
+
 export interface AIActivityLog {
     id: string;
     business_id: string;
@@ -23,6 +46,150 @@ export interface AIActivityLog {
     description: string | null;
     metadata: Record<string, unknown>;
     created_at: string;
+
+    contact?: AIActivityContact | null;
+    conversation?: AIActivityConversation | null;
+}
+
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+    if (Array.isArray(value)) {
+        return value[0] || null;
+    }
+
+    return value || null;
+}
+
+type RawActivityConversation = Omit<
+    AIActivityConversation,
+    "contacts" | "channels"
+> & {
+    contacts?: AIActivityContact | AIActivityContact[] | null;
+    channels?:
+    | {
+        id: string;
+        name: string | null;
+        type: string | null;
+    }
+    | {
+        id: string;
+        name: string | null;
+        type: string | null;
+    }[]
+    | null;
+};
+
+function normalizeConversation(
+    conversation: RawActivityConversation
+): AIActivityConversation {
+    return {
+        ...conversation,
+        contacts: firstRelation(conversation.contacts),
+        channels: firstRelation(conversation.channels),
+    };
+}
+
+async function hydrateActivityLogs(logs: AIActivityLog[]) {
+    if (logs.length === 0) return logs;
+
+    const conversationIds = Array.from(
+        new Set(
+            logs
+                .map((log) => log.conversation_id)
+                .filter((id): id is string => Boolean(id))
+        )
+    );
+
+    const directContactIds = Array.from(
+        new Set(
+            logs
+                .map((log) => log.contact_id)
+                .filter((id): id is string => Boolean(id))
+        )
+    );
+
+    let conversations: AIActivityConversation[] = [];
+
+    if (conversationIds.length > 0) {
+        const { data, error } = await supabase
+            .from("conversations")
+            .select(
+                `
+        id,
+        status,
+        intent,
+        urgency,
+        sentiment,
+        ai_score,
+        ai_summary,
+        contacts (
+          id,
+          full_name,
+          email,
+          phone
+        ),
+        channels (
+          id,
+          name,
+          type
+        )
+      `
+            )
+            .in("id", conversationIds);
+
+        if (error) {
+            console.error("Hydrate activity conversations error:", error);
+        } else {
+            conversations = ((data || []) as RawActivityConversation[]).map(
+                normalizeConversation
+            );
+        }
+    }
+
+    const conversationMap = new Map(
+        conversations.map((conversation) => [conversation.id, conversation])
+    );
+
+    const contactIdsFromConversations = conversations
+        .map((conversation) => conversation.contacts?.id)
+        .filter((id): id is string => Boolean(id));
+
+    const allContactIds = Array.from(
+        new Set([...directContactIds, ...contactIdsFromConversations])
+    );
+
+    let contacts: AIActivityContact[] = [];
+
+    if (allContactIds.length > 0) {
+        const { data, error } = await supabase
+            .from("contacts")
+            .select("id, full_name, email, phone")
+            .in("id", allContactIds);
+
+        if (error) {
+            console.error("Hydrate activity contacts error:", error);
+        } else {
+            contacts = (data || []) as AIActivityContact[];
+        }
+    }
+
+    const contactMap = new Map(contacts.map((contact) => [contact.id, contact]));
+
+    return logs.map((log) => {
+        const conversation = log.conversation_id
+            ? conversationMap.get(log.conversation_id) || null
+            : null;
+
+        const contact =
+            (log.contact_id ? contactMap.get(log.contact_id) : null) ||
+            conversation?.contacts ||
+            null;
+
+        return {
+            ...log,
+            conversation,
+            contact,
+        };
+    });
 }
 
 export const aiActivityService = {
@@ -37,7 +204,7 @@ export const aiActivityService = {
             throw new Error(error.message);
         }
 
-        return data as AIActivityLog[];
+        return hydrateActivityLogs((data || []) as AIActivityLog[]);
     },
 
     async getActivityLogs(params?: {
@@ -70,7 +237,7 @@ export const aiActivityService = {
             throw new Error(error.message);
         }
 
-        return data as AIActivityLog[];
+        return hydrateActivityLogs((data || []) as AIActivityLog[]);
     },
 
     async createActivityLog(payload: {
@@ -102,6 +269,8 @@ export const aiActivityService = {
             throw new Error(error.message);
         }
 
-        return data as AIActivityLog;
+        const [hydrated] = await hydrateActivityLogs([data as AIActivityLog]);
+
+        return hydrated;
     },
 };
