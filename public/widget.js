@@ -1,141 +1,633 @@
 (function () {
-  const script = document.currentScript;
+  const currentScript = document.currentScript;
 
-  if (!script) {
-    console.error("Atendilo widget script not found.");
+  const API_BASE =
+    currentScript?.dataset.apiBase ||
+    currentScript?.getAttribute("data-api-base") ||
+    currentScript?.src?.replace(/\/widget\.js.*$/, "") ||
+    "";
+
+  const BUSINESS_ID =
+    currentScript?.dataset.businessId ||
+    currentScript?.getAttribute("data-business-id") ||
+    window.ATENDILO_BUSINESS_ID ||
+    "";
+
+  if (!BUSINESS_ID) {
+    console.error("[Atendilo Widget] Missing business id.");
     return;
   }
 
-  const businessId = script.getAttribute("data-business-id");
-
-  if (!businessId) {
-    console.error("Atendilo widget: data-business-id is required.");
-    return;
-  }
-
-  const apiUrl = script.getAttribute("data-api-url") || "http://localhost:4000";
-
-  const widgetOrigin = new URL(script.src).origin;
-  const logoPath = script.getAttribute("data-logo-path") || "/icon.png";
-  const logoUrl = `${widgetOrigin}${logoPath.startsWith("/") ? logoPath : `/${logoPath}`}`;
-
-  const sessionKey = `atendilo_webchat_session_${businessId}`;
-  const inactivityLimit = 30 * 60 * 1000;
-  const pollingIntervalMs = 3000;
-
-  let widgetConfig = {
-    status: "inactive",
-    widgetTitle: "Atendilo AI",
-    welcomeMessage: "",
-    primaryColor: "#38bdf8",
-    captureLeads: true,
+  const state = {
+    config: null,
+    isOpen: false,
+    isMinimized: false,
+    isLoading: false,
+    isSending: false,
+    sessionId: crypto.randomUUID
+      ? crypto.randomUUID()
+      : `session_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+    conversationId: null,
+    conversationStatus: null,
+    messages: [],
+    visitor: null,
+    pollingInterval: null,
   };
 
-  let widgetSession = loadSession();
-  let pollingTimer = null;
-  let isPollingMessages = false;
-  let isSendingMessage = false;
-  let typingRow = null;
-  let unreadCount = 0;
+  const endpoints = {
+    config: `${API_BASE}/api/webchat/config/${BUSINESS_ID}`,
+    messages: `${API_BASE}/api/webchat/messages`,
+    send: `${API_BASE}/api/webchat/message`,
+    end: `${API_BASE}/api/webchat/end`,
+  };
 
-  function getAiName() {
-    return widgetConfig.widgetTitle || "Atendilo AI";
-  }
-
-  function createSessionId() {
-    return (
-      window.crypto?.randomUUID?.() ||
-      `session_${Date.now()}_${Math.random().toString(36).slice(2)}`
-    );
-  }
-
-  function createClientMessageId() {
-    return `client_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  }
-
-  function createEmptySession() {
-    return {
-      sessionId: createSessionId(),
-      conversationId: null,
-      conversationStatus: "open",
-      messages: [],
-      visitor: {
-        name: "",
-        phone: "",
-        email: "",
-      },
-      visitorLocked: false,
-      agentMode: false,
-      ended: false,
-      lastActivityAt: Date.now(),
-    };
-  }
-
-  function loadSession() {
-    try {
-      const rawSession = sessionStorage.getItem(sessionKey);
-
-      if (!rawSession) {
-        return createEmptySession();
-      }
-
-      const parsedSession = JSON.parse(rawSession);
-      const lastActivityAt = Number(parsedSession.lastActivityAt || 0);
-
-      const isExpired =
-        lastActivityAt && Date.now() - lastActivityAt > inactivityLimit;
-
-      if (isExpired) {
-        endSessionInBackend(parsedSession.sessionId, "inactivity");
-        sessionStorage.removeItem(sessionKey);
-
-        return {
-          ...createEmptySession(),
-          ended: true,
-        };
-      }
-
-      return {
-        sessionId: parsedSession.sessionId || createSessionId(),
-        conversationId: parsedSession.conversationId || null,
-        conversationStatus: parsedSession.conversationStatus || "open",
-        messages: Array.isArray(parsedSession.messages)
-          ? parsedSession.messages
-          : [],
-        visitor: parsedSession.visitor || {
-          name: "",
-          phone: "",
-          email: "",
-        },
-        visitorLocked: Boolean(parsedSession.visitorLocked),
-        agentMode: Boolean(parsedSession.agentMode),
-        ended: Boolean(parsedSession.ended),
-        lastActivityAt: parsedSession.lastActivityAt || Date.now(),
-      };
-    } catch (error) {
-      console.error("Atendilo load session error:", error);
-      sessionStorage.removeItem(sessionKey);
-      return createEmptySession();
+  const styles = `
+    .atendilo-widget-root,
+    .atendilo-widget-root * {
+      box-sizing: border-box;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
+
+    .atendilo-launcher {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      width: 64px;
+      height: 64px;
+      border-radius: 999px;
+      border: 0;
+      cursor: pointer;
+      z-index: 2147483646;
+      background: linear-gradient(135deg, var(--atendilo-primary), #2563eb);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .atendilo-launcher:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 26px 60px rgba(0, 0, 0, 0.45);
+    }
+
+    .atendilo-launcher img {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+    }
+
+    .atendilo-launcher svg {
+      width: 31px;
+      height: 31px;
+      color: white;
+    }
+
+    .atendilo-panel {
+      position: fixed;
+      right: 24px;
+      bottom: 100px;
+      width: 370px;
+      height: 620px;
+      max-height: calc(100vh - 130px);
+      z-index: 2147483646;
+      border-radius: 22px;
+      overflow: hidden;
+      background: #070b14;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+      display: none;
+      color: #f8fafc;
+    }
+
+    .atendilo-panel.open {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .atendilo-header {
+      padding: 14px 16px;
+      background: #090e19;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    }
+
+    .atendilo-header-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .atendilo-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: rgba(56, 189, 248, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .atendilo-avatar svg {
+      width: 24px;
+      height: 24px;
+      color: var(--atendilo-primary);
+    }
+
+    .atendilo-title-area {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .atendilo-title {
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1.1;
+      color: #ffffff;
+      margin: 0;
+    }
+
+    .atendilo-subtitle {
+      margin: 3px 0 0;
+      font-size: 12px;
+      color: rgba(226, 232, 240, 0.7);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .atendilo-minimize {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(15, 23, 42, 0.8);
+      color: rgba(226, 232, 240, 0.8);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .atendilo-status-row {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .atendilo-online {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: rgba(226, 232, 240, 0.8);
+    }
+
+    .atendilo-online-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1);
+    }
+
+    .atendilo-end-btn {
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      background: rgba(15, 23, 42, 0.85);
+      color: rgba(226, 232, 240, 0.85);
+      font-size: 11px;
+      padding: 6px 11px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    .atendilo-end-btn:hover {
+      border-color: rgba(248, 113, 113, 0.45);
+      color: #fecaca;
+      background: rgba(127, 29, 29, 0.25);
+    }
+
+    .atendilo-chatting-as {
+      padding: 8px 14px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+      background: rgba(2, 6, 23, 0.8);
+      color: rgba(226, 232, 240, 0.82);
+      font-size: 12px;
+    }
+
+    .atendilo-chatting-as strong {
+      color: #ffffff;
+      font-weight: 800;
+    }
+
+    .atendilo-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: #060a12;
+    }
+
+    .atendilo-lead-form-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 20px 14px;
+    }
+
+    .atendilo-lead-form {
+      width: 100%;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 16px;
+      padding: 14px;
+    }
+
+    .atendilo-lead-form h3 {
+      margin: 0;
+      font-size: 16px;
+      color: #ffffff;
+    }
+
+    .atendilo-lead-form p {
+      margin: 5px 0 12px;
+      font-size: 12px;
+      color: rgba(226, 232, 240, 0.68);
+    }
+
+    .atendilo-input {
+      width: 100%;
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      background: rgba(2, 6, 23, 0.7);
+      color: #ffffff;
+      outline: none;
+      padding: 0 10px;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .atendilo-input:focus,
+    .atendilo-message-input:focus {
+      border-color: var(--atendilo-primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--atendilo-primary) 20%, transparent);
+    }
+
+    .atendilo-start-btn,
+    .atendilo-send-btn {
+      border: 0;
+      cursor: pointer;
+      background: var(--atendilo-primary);
+      color: white;
+      font-weight: 800;
+      border-radius: 10px;
+      height: 40px;
+      padding: 0 14px;
+      font-size: 13px;
+    }
+
+    .atendilo-start-btn {
+      width: 100%;
+    }
+
+    .atendilo-start-btn:disabled,
+    .atendilo-send-btn:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .atendilo-messages {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 14px;
+      scroll-behavior: smooth;
+    }
+
+    .atendilo-messages::-webkit-scrollbar {
+      width: 7px;
+    }
+
+    .atendilo-messages::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .atendilo-messages::-webkit-scrollbar-thumb {
+      background: var(--atendilo-primary);
+      border-radius: 999px;
+    }
+
+    .atendilo-message {
+      display: flex;
+      margin-bottom: 12px;
+    }
+
+    .atendilo-message.customer {
+      justify-content: flex-end;
+    }
+
+    .atendilo-message.ai,
+    .atendilo-message.agent {
+      justify-content: flex-start;
+    }
+
+    .atendilo-bubble {
+      max-width: 82%;
+      border-radius: 16px;
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.42;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .atendilo-message.customer .atendilo-bubble {
+      background: var(--atendilo-primary);
+      color: white;
+      border-bottom-right-radius: 6px;
+    }
+
+    .atendilo-message.ai .atendilo-bubble,
+    .atendilo-message.agent .atendilo-bubble {
+      background: #111827;
+      color: #f8fafc;
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-bottom-left-radius: 6px;
+    }
+
+    .atendilo-bubble-label {
+      display: block;
+      color: rgba(226, 232, 240, 0.58);
+      font-size: 11px;
+      margin-bottom: 5px;
+      font-weight: 700;
+    }
+
+    .atendilo-handoff-banner {
+      margin: 8px 12px;
+      padding: 10px 12px;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      background: rgba(245, 158, 11, 0.12);
+      color: #fbbf24;
+      border-radius: 12px;
+      font-size: 12px;
+      line-height: 1.35;
+      display: none;
+    }
+
+    .atendilo-handoff-banner strong {
+      display: block;
+      color: #fcd34d;
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+
+    .atendilo-handoff-banner span {
+      display: block;
+      color: rgba(253, 230, 138, 0.9);
+    }
+
+    .atendilo-composer {
+      display: flex;
+      gap: 8px;
+      padding: 10px 12px 12px;
+      border-top: 1px solid rgba(148, 163, 184, 0.14);
+      background: #070b14;
+    }
+
+    .atendilo-message-input {
+      flex: 1;
+      min-width: 0;
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(2, 6, 23, 0.72);
+      color: #ffffff;
+      outline: none;
+      padding: 0 12px;
+      font-size: 13px;
+    }
+
+    .atendilo-send-btn {
+      height: 44px;
+      min-width: 72px;
+      border-radius: 12px;
+    }
+
+    .atendilo-loading {
+      padding: 10px 14px;
+      color: rgba(226, 232, 240, 0.58);
+      font-size: 12px;
+    }
+
+    .atendilo-hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 520px) {
+      .atendilo-panel {
+        right: 10px;
+        left: 10px;
+        bottom: 86px;
+        width: auto;
+        height: min(620px, calc(100vh - 110px));
+      }
+
+      .atendilo-launcher {
+        right: 18px;
+        bottom: 18px;
+      }
+    }
+  `;
+
+  function injectStyles(primaryColor) {
+    if (document.getElementById("atendilo-widget-styles")) return;
+
+    const style = document.createElement("style");
+    style.id = "atendilo-widget-styles";
+    style.textContent = styles;
+
+    document.head.appendChild(style);
+    document.documentElement.style.setProperty(
+      "--atendilo-primary",
+      primaryColor || "#ee82ee"
+    );
   }
 
-  function saveSession() {
-    widgetSession.lastActivityAt = Date.now();
+  function botIconSvg() {
+    return `
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M9 3h6v2h-2v2h4a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h4V5H9V3Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M9 13h.01M15 13h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M9.5 17h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M3 12H2M22 12h-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    `;
+  }
 
-    sessionStorage.setItem(
-      sessionKey,
-      JSON.stringify({
-        sessionId: widgetSession.sessionId,
-        conversationId: widgetSession.conversationId,
-        conversationStatus: widgetSession.conversationStatus,
-        messages: widgetSession.messages,
-        visitor: widgetSession.visitor,
-        visitorLocked: widgetSession.visitorLocked,
-        agentMode: widgetSession.agentMode,
-        ended: widgetSession.ended,
-        lastActivityAt: widgetSession.lastActivityAt,
-      })
-    );
+  function createRoot() {
+    const root = document.createElement("div");
+    root.className = "atendilo-widget-root";
+    root.innerHTML = `
+      <button class="atendilo-launcher" type="button" aria-label="Open chat">
+        ${botIconSvg()}
+      </button>
+
+      <section class="atendilo-panel" aria-label="Atendilo web chat">
+        <header class="atendilo-header">
+          <div class="atendilo-header-top">
+            <div class="atendilo-avatar">
+              ${botIconSvg()}
+            </div>
+
+            <div class="atendilo-title-area">
+              <h2 class="atendilo-title">Angela AI</h2>
+              <p class="atendilo-subtitle">Ask us anything. We usually reply instantly.</p>
+            </div>
+
+            <button class="atendilo-minimize" type="button" aria-label="Minimize chat">−</button>
+          </div>
+
+          <div class="atendilo-status-row">
+            <div class="atendilo-online">
+              <span class="atendilo-online-dot"></span>
+              <span>Online now</span>
+            </div>
+
+            <button class="atendilo-end-btn" type="button">End chat</button>
+          </div>
+        </header>
+
+        <div class="atendilo-chatting-as atendilo-hidden"></div>
+
+        <main class="atendilo-body">
+          <div class="atendilo-lead-form-wrap atendilo-hidden">
+            <form class="atendilo-lead-form">
+              <h3>Start your chat</h3>
+              <p>Please enter your details so we can help you better.</p>
+
+              <input class="atendilo-input atendilo-name" placeholder="Name *" autocomplete="name" />
+              <input class="atendilo-input atendilo-phone" placeholder="Phone *" autocomplete="tel" />
+              <input class="atendilo-input atendilo-email" placeholder="Email" autocomplete="email" />
+
+              <button class="atendilo-start-btn" type="submit">Start chat</button>
+            </form>
+          </div>
+
+          <div class="atendilo-messages"></div>
+
+          <div class="atendilo-handoff-banner">
+            <strong>Human agent requested</strong>
+            <span>A human agent will join the conversation soon. You can keep sending messages here.</span>
+          </div>
+
+          <form class="atendilo-composer">
+            <input class="atendilo-message-input" placeholder="Type your message..." autocomplete="off" />
+            <button class="atendilo-send-btn" type="submit">Send</button>
+          </form>
+        </main>
+      </section>
+    `;
+
+    document.body.appendChild(root);
+    return root;
+  }
+
+  const root = createRoot();
+
+  const $ = (selector) => root.querySelector(selector);
+
+  const launcher = $(".atendilo-launcher");
+  const panel = $(".atendilo-panel");
+  const titleEl = $(".atendilo-title");
+  const subtitleEl = $(".atendilo-subtitle");
+  const minimizeBtn = $(".atendilo-minimize");
+  const endBtn = $(".atendilo-end-btn");
+  const chattingAs = $(".atendilo-chatting-as");
+  const leadWrap = $(".atendilo-lead-form-wrap");
+  const leadForm = $(".atendilo-lead-form");
+  const nameInput = $(".atendilo-name");
+  const phoneInput = $(".atendilo-phone");
+  const emailInput = $(".atendilo-email");
+  const messagesEl = $(".atendilo-messages");
+  const composer = $(".atendilo-composer");
+  const messageInput = $(".atendilo-message-input");
+  const sendBtn = $(".atendilo-send-btn");
+  const handoffBanner = $(".atendilo-handoff-banner");
+
+  function showPanel() {
+    state.isOpen = true;
+    panel.classList.add("open");
+    setTimeout(() => messageInput?.focus(), 80);
+    startPolling();
+  }
+
+  function hidePanel() {
+    state.isOpen = false;
+    panel.classList.remove("open");
+    stopPolling();
+  }
+
+  function minimizePanel() {
+    hidePanel();
+  }
+
+  function setLoading(value) {
+    state.isLoading = value;
+  }
+
+  function setSending(value) {
+    state.isSending = value;
+    sendBtn.disabled = value;
+    messageInput.disabled = value;
+  }
+
+  function getVisitorLabel() {
+    if (!state.visitor) return "Customer";
+
+    const name = state.visitor.name?.trim();
+    const phone = state.visitor.phone?.trim();
+    const email = state.visitor.email?.trim();
+
+    if (name && phone) return `${name} · ${phone}`;
+    if (name && email) return `${name} · ${email}`;
+    if (name) return name;
+    if (phone) return phone;
+    if (email) return email;
+
+    return "Customer";
+  }
+
+  function renderChattingAs() {
+    const label = getVisitorLabel();
+    chattingAs.innerHTML = `Chatting as <strong>${escapeHtml(label)}</strong>`;
+    chattingAs.classList.remove("atendilo-hidden");
+  }
+
+  function renderHandoffBanner() {
+    const shouldShow = state.conversationStatus === "pending";
+    handoffBanner.style.display = shouldShow ? "block" : "none";
+  }
+
+  function shouldShowLeadForm() {
+    return Boolean(state.config?.captureLeads) && !state.visitor;
+  }
+
+  function updateUIByLeadMode() {
+    const showLeadForm = shouldShowLeadForm();
+
+    leadWrap.classList.toggle("atendilo-hidden", !showLeadForm);
+    messagesEl.classList.toggle("atendilo-hidden", showLeadForm);
+    composer.classList.toggle("atendilo-hidden", showLeadForm);
+
+    if (!showLeadForm) {
+      renderChattingAs();
+    }
   }
 
   function escapeHtml(value) {
@@ -147,1482 +639,297 @@
       .replaceAll("'", "&#039;");
   }
 
-  function isWidgetOpen(windowEl) {
-    return windowEl.classList.contains("atendilo-open");
-  }
-
-  function isHumanAgentRequest(text) {
-    const value = String(text || "").toLowerCase();
-
-    return (
-      value.includes("agent") ||
-      value.includes("human") ||
-      value.includes("person") ||
-      value.includes("representative") ||
-      value.includes("asesor") ||
-      value.includes("agente") ||
-      value.includes("persona") ||
-      value.includes("humano") ||
-      value.includes("alguien real") ||
-      value.includes("hablar con alguien") ||
-      value.includes("quiero hablar") ||
-      value.includes("speak to someone") ||
-      value.includes("talk to someone") ||
-      value.includes("live agent") ||
-      value.includes("real person")
-    );
-  }
-
-  function createFetchWithTimeout(url, options = {}, timeoutMs = 45000) {
-    const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
-
-    return fetch(url, {
-      ...options,
-      signal: controller.signal,
-    }).finally(() => {
-      window.clearTimeout(timeoutId);
-    });
-  }
-
-  function normalizeMessage(item) {
-    const senderType = item.sender_type || item.senderType || item.role;
-
-    let role = "assistant";
-
-    if (senderType === "contact" || senderType === "user") {
-      role = "user";
+  function normalizeSender(senderType) {
+    if (senderType === "contact" || senderType === "customer" || senderType === "user") {
+      return "customer";
     }
 
-    if (senderType === "agent") {
-      role = "agent";
+    if (senderType === "agent" || senderType === "profile") {
+      return "agent";
     }
 
-    if (senderType === "ai" || senderType === "assistant") {
-      role = "assistant";
-    }
-
-    const metadata = item.metadata || {};
-
-    const clientMessageId =
-      item.clientMessageId ||
-      item.client_message_id ||
-      metadata.clientMessageId ||
-      metadata.client_message_id ||
-      null;
-
-    return {
-      id:
-        item.id ||
-        item.messageId ||
-        `${role}_${item.created_at || item.createdAt || Date.now()}_${Math.random()}`,
-      clientMessageId,
-      role,
-      content: item.content || item.message || "",
-      createdAt: item.created_at || item.createdAt || new Date().toISOString(),
-    };
+    return "ai";
   }
 
-  function isLocalMessage(message) {
-    return String(message?.id || "").startsWith("local_");
-  }
+  function renderMessages() {
+    messagesEl.innerHTML = "";
 
-  function normalizeContent(value) {
-    return String(value || "").trim();
-  }
-
-  function getMessageFingerprint(message) {
-    if (message?.clientMessageId) {
-      return `client::${message.clientMessageId}`;
-    }
-
-    if (message?.id) {
-      return `id::${message.id}`;
-    }
-
-    return [
-      "fallback",
-      message?.role || "",
-      message?.content || "",
-      message?.createdAt || "",
-    ].join("::");
-  }
-
-  function areCloseInTime(a, b) {
-    const dateA = new Date(a?.createdAt || 0).getTime();
-    const dateB = new Date(b?.createdAt || 0).getTime();
-
-    if (!dateA || !dateB) return true;
-
-    return Math.abs(dateA - dateB) <= 5 * 60 * 1000;
-  }
-
-  function isSameLocalAndServerMessage(localMessage, serverMessage) {
-    if (!isLocalMessage(localMessage)) return false;
-
-    if (
-      localMessage.clientMessageId &&
-      serverMessage.clientMessageId &&
-      localMessage.clientMessageId === serverMessage.clientMessageId
-    ) {
-      return true;
-    }
-
-    return (
-      localMessage.role === serverMessage.role &&
-      normalizeContent(localMessage.content) ===
-      normalizeContent(serverMessage.content) &&
-      areCloseInTime(localMessage, serverMessage)
-    );
-  }
-
-  function mergeMessages(localMessages, serverMessages) {
-    const localList = Array.isArray(localMessages) ? localMessages : [];
-    const serverList = Array.isArray(serverMessages) ? serverMessages : [];
-
-    const usedLocalIndexes = new Set();
-    const merged = [];
-    const usedKeys = new Set();
-
-    serverList.forEach((serverMessage) => {
-      if (!serverMessage?.content) return;
-
-      const matchingLocalIndex = localList.findIndex((localMessage, index) => {
-        if (usedLocalIndexes.has(index)) return false;
-        return isSameLocalAndServerMessage(localMessage, serverMessage);
+    if (!state.messages.length && state.config?.welcomeMessage) {
+      appendMessage({
+        sender_type: "ai",
+        content: state.config.welcomeMessage,
+        synthetic: true,
       });
-
-      if (matchingLocalIndex >= 0) {
-        usedLocalIndexes.add(matchingLocalIndex);
-      }
-
-      const key = getMessageFingerprint(serverMessage);
-
-      if (!usedKeys.has(key)) {
-        usedKeys.add(key);
-        merged.push(serverMessage);
-      }
-    });
-
-    localList.forEach((localMessage, index) => {
-      if (!localMessage?.content) return;
-      if (usedLocalIndexes.has(index)) return;
-
-      const key = getMessageFingerprint(localMessage);
-
-      if (!usedKeys.has(key)) {
-        usedKeys.add(key);
-        merged.push(localMessage);
-      }
-    });
-
-    return merged.sort((a, b) => {
-      const dateA = new Date(a.createdAt || 0).getTime();
-      const dateB = new Date(b.createdAt || 0).getTime();
-
-      return dateA - dateB;
-    });
-  }
-
-  async function endSessionInBackend(sessionId, reason) {
-    if (!sessionId) return;
-
-    try {
-      await fetch(`${apiUrl}/api/webchat/end`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          businessId,
-          sessionId,
-          reason,
-        }),
-      });
-    } catch (error) {
-      console.error("Atendilo end session error:", error);
-    }
-  }
-
-  async function loadWidgetConfig() {
-    try {
-      const response = await fetch(`${apiUrl}/api/webchat/config/${businessId}`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.error || "Could not load widget config");
-      }
-
-      widgetConfig = {
-        status: data.status || widgetConfig.status,
-        widgetTitle:
-          data.widgetTitle || data.widget_title || widgetConfig.widgetTitle,
-        welcomeMessage: data.welcomeMessage || data.welcome_message || "",
-        primaryColor:
-          data.primaryColor || data.primary_color || widgetConfig.primaryColor,
-        captureLeads:
-          data.captureLeads ?? data.capture_leads ?? widgetConfig.captureLeads,
-      };
-
-      if (!widgetConfig.welcomeMessage) {
-        widgetConfig.welcomeMessage = `Hi! I’m ${widgetConfig.widgetTitle}. How can I help you today?`;
-      }
-    } catch (error) {
-      console.error("Atendilo widget config error:", error);
-    }
-  }
-
-  initAtendiloWidget();
-
-  async function initAtendiloWidget() {
-    await loadWidgetConfig();
-
-    if (widgetConfig.status !== "active") {
-      console.warn("Atendilo widget is inactive for this business.");
       return;
     }
 
-    const styles = document.createElement("style");
+    state.messages.forEach(appendMessage);
 
-    styles.innerHTML = `
-      .atendilo-widget-button {
-        position: fixed;
-        right: 22px;
-        bottom: 22px;
-        width: 58px;
-        height: 58px;
-        border-radius: 999px;
-        border: none;
-        background: linear-gradient(135deg, ${widgetConfig.primaryColor}, #0077ff);
-        color: white;
-        cursor: pointer;
-        box-shadow: 0 18px 45px rgba(0, 119, 255, 0.35);
-        z-index: 999999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        transition: transform 0.18s ease, box-shadow 0.18s ease;
-      }
-
-      .atendilo-widget-button:hover {
-        transform: translateY(-2px) scale(1.03);
-        box-shadow: 0 22px 55px rgba(0, 119, 255, 0.42);
-      }
-
-      .atendilo-widget-button-logo {
-        width: 33px;
-        height: 33px;
-        object-fit: contain;
-        display: block;
-      }
-
-      .atendilo-unread-badge {
-        position: absolute;
-        top: -4px;
-        right: -4px;
-        min-width: 20px;
-        height: 20px;
-        padding: 0 6px;
-        border-radius: 999px;
-        background: #ef4444;
-        color: white;
-        border: 2px solid #05070a;
-        font-size: 11px;
-        font-weight: 800;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        box-sizing: border-box;
-      }
-
-      .atendilo-widget-button.atendilo-has-unread {
-        animation: atendiloPulse 1.3s infinite ease-in-out;
-      }
-
-      @keyframes atendiloPulse {
-        0%, 100% {
-          transform: scale(1);
-          box-shadow: 0 18px 45px rgba(0, 119, 255, 0.35);
-        }
-        50% {
-          transform: scale(1.06);
-          box-shadow: 0 22px 62px rgba(239, 68, 68, 0.38);
-        }
-      }
-
-      .atendilo-widget-window {
-        position: fixed;
-        right: 22px;
-        bottom: 92px;
-        width: 370px;
-        max-width: calc(100vw - 32px);
-        height: min(570px, calc(100vh - 118px));
-        max-height: calc(100vh - 118px);
-        border-radius: 22px;
-        overflow: hidden;
-        background: #05070a;
-        border: 1px solid rgba(255,255,255,0.12);
-        box-shadow: 0 25px 80px rgba(0,0,0,0.52);
-        z-index: 999999;
-        display: none;
-        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      }
-
-      .atendilo-widget-window.atendilo-open {
-        display: flex;
-        flex-direction: column;
-      }
-
-      .atendilo-widget-header {
-        padding: 13px;
-        background: linear-gradient(180deg, #08101d, #060912);
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-        color: white;
-        flex-shrink: 0;
-      }
-
-      .atendilo-widget-header-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .atendilo-widget-header-logo {
-        width: 36px;
-        height: 36px;
-        border-radius: 12px;
-        object-fit: contain;
-        background: rgba(255,255,255,0.07);
-        padding: 5px;
-        flex-shrink: 0;
-      }
-
-      .atendilo-widget-header-content {
-        flex: 1;
-        min-width: 0;
-      }
-
-      .atendilo-widget-title {
-        margin: 0;
-        font-size: 15px;
-        font-weight: 800;
-        line-height: 1.2;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .atendilo-widget-subtitle {
-        margin: 4px 0 0;
-        font-size: 11.5px;
-        line-height: 1.3;
-        color: rgba(255,255,255,0.62);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .atendilo-widget-icon-btn {
-        width: 30px;
-        height: 30px;
-        border-radius: 999px;
-        border: 1px solid rgba(255,255,255,0.12);
-        background: rgba(255,255,255,0.06);
-        color: rgba(255,255,255,0.8);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 17px;
-        line-height: 1;
-        padding: 0;
-      }
-
-      .atendilo-widget-icon-btn:hover {
-        background: rgba(255,255,255,0.12);
-        color: white;
-      }
-
-      .atendilo-widget-header-bottom {
-        margin-top: 10px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .atendilo-widget-status {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 11px;
-        color: rgba(255,255,255,0.65);
-      }
-
-      .atendilo-widget-status-dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 999px;
-        background: #22c55e;
-        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
-      }
-
-      .atendilo-widget-end {
-        border: 1px solid rgba(255,255,255,0.14);
-        background: rgba(255,255,255,0.06);
-        color: rgba(255,255,255,0.78);
-        border-radius: 999px;
-        padding: 6px 10px;
-        font-size: 11px;
-        cursor: pointer;
-        white-space: nowrap;
-      }
-
-      .atendilo-widget-end:hover {
-        background: rgba(255,255,255,0.1);
-        color: white;
-      }
-
-      .atendilo-lead-screen,
-      .atendilo-ended-screen {
-        flex: 1;
-        min-height: 0;
-        padding: 16px;
-        background: radial-gradient(circle at top, rgba(56,189,248,0.08), transparent 34%), #030509;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-      }
-
-      .atendilo-lead-card,
-      .atendilo-ended-card {
-        border: 1px solid rgba(255,255,255,0.1);
-        background: rgba(255,255,255,0.04);
-        border-radius: 18px;
-        padding: 16px;
-      }
-
-      .atendilo-lead-title,
-      .atendilo-ended-title {
-        margin: 0;
-        color: white;
-        font-size: 18px;
-        font-weight: 800;
-      }
-
-      .atendilo-lead-text,
-      .atendilo-ended-text {
-        margin: 7px 0 14px;
-        color: rgba(255,255,255,0.62);
-        font-size: 13px;
-        line-height: 1.45;
-      }
-
-      .atendilo-widget-fields {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 8px;
-      }
-
-      .atendilo-widget-input,
-      .atendilo-widget-text {
-        width: 100%;
-        box-sizing: border-box;
-        border-radius: 12px;
-        border: 1px solid rgba(255,255,255,0.12);
-        background: #02040a;
-        color: white;
-        padding: 10px 12px;
-        outline: none;
-        font-size: 13px;
-      }
-
-      .atendilo-widget-input::placeholder,
-      .atendilo-widget-text::placeholder {
-        color: rgba(255,255,255,0.42);
-      }
-
-      .atendilo-widget-input:focus,
-      .atendilo-widget-text:focus {
-        border-color: ${widgetConfig.primaryColor};
-        box-shadow: 0 0 0 3px rgba(56,189,248,0.12);
-      }
-
-      .atendilo-lead-error {
-        display: none;
-        margin-top: 9px;
-        color: #fca5a5;
-        font-size: 12px;
-      }
-
-      .atendilo-primary-action {
-        margin-top: 12px;
-        width: 100%;
-        min-height: 42px;
-        border: none;
-        border-radius: 12px;
-        background: ${widgetConfig.primaryColor};
-        color: white;
-        cursor: pointer;
-        font-weight: 800;
-        font-size: 13px;
-      }
-
-      .atendilo-visitor-bar {
-        display: none;
-        padding: 9px 12px;
-        border-bottom: 1px solid rgba(255,255,255,0.08);
-        background: #05070a;
-        color: rgba(255,255,255,0.68);
-        font-size: 12px;
-        flex-shrink: 0;
-      }
-
-      .atendilo-visitor-bar strong {
-        color: white;
-      }
-
-      .atendilo-widget-chat {
-        flex: 1;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-      }
-
-      .atendilo-widget-messages {
-        flex: 1;
-        min-height: 0;
-        padding: 14px;
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        background: radial-gradient(circle at top, rgba(56,189,248,0.06), transparent 34%), #030509;
-        scrollbar-width: thin;
-        scrollbar-color: ${widgetConfig.primaryColor} rgba(255,255,255,0.06);
-      }
-
-      .atendilo-widget-messages::-webkit-scrollbar {
-        width: 8px;
-      }
-
-      .atendilo-widget-messages::-webkit-scrollbar-track {
-        background: rgba(255,255,255,0.04);
-        border-radius: 999px;
-      }
-
-      .atendilo-widget-messages::-webkit-scrollbar-thumb {
-        background: ${widgetConfig.primaryColor};
-        border-radius: 999px;
-        border: 2px solid #030509;
-      }
-
-      .atendilo-message-row {
-        display: flex;
-        margin-bottom: 10px;
-      }
-
-      .atendilo-message-row.user {
-        justify-content: flex-end;
-      }
-
-      .atendilo-message-row.assistant,
-      .atendilo-message-row.agent {
-        justify-content: flex-start;
-      }
-
-      .atendilo-message-bubble {
-        max-width: 84%;
-        padding: 10px 12px;
-        border-radius: 16px;
-        font-size: 13px;
-        line-height: 1.45;
-        white-space: pre-wrap;
-        word-break: break-word;
-      }
-
-      .atendilo-message-row.user .atendilo-message-bubble {
-        background: ${widgetConfig.primaryColor};
-        color: white;
-        border-bottom-right-radius: 5px;
-        box-shadow: 0 10px 28px rgba(0, 119, 255, 0.22);
-      }
-
-      .atendilo-message-row.assistant .atendilo-message-bubble {
-        background: #111722;
-        color: white;
-        border: 1px solid rgba(255,255,255,0.06);
-        border-bottom-left-radius: 5px;
-      }
-
-      .atendilo-message-row.agent .atendilo-message-bubble {
-        background: #0b2540;
-        color: white;
-        border: 1px solid rgba(56,189,248,0.22);
-        border-bottom-left-radius: 5px;
-      }
-
-      .atendilo-message-label {
-        display: block;
-        margin-bottom: 4px;
-        font-size: 10.5px;
-        color: rgba(255,255,255,0.55);
-      }
-
-      .atendilo-typing-dots {
-        display: inline-flex;
-        gap: 4px;
-        align-items: center;
-      }
-
-      .atendilo-typing-dots span {
-        width: 5px;
-        height: 5px;
-        border-radius: 999px;
-        background: rgba(255,255,255,0.7);
-        animation: atendiloTyping 1s infinite ease-in-out;
-      }
-
-      .atendilo-typing-dots span:nth-child(2) {
-        animation-delay: 0.15s;
-      }
-
-      .atendilo-typing-dots span:nth-child(3) {
-        animation-delay: 0.3s;
-      }
-
-      @keyframes atendiloTyping {
-        0%, 80%, 100% {
-          opacity: 0.35;
-          transform: translateY(0);
-        }
-
-        40% {
-          opacity: 1;
-          transform: translateY(-3px);
-        }
-      }
-
-      .atendilo-widget-footer {
-        display: flex;
-        gap: 8px;
-        padding: 10px;
-        border-top: 1px solid rgba(255,255,255,0.1);
-        background: #05070a;
-        flex-shrink: 0;
-      }
-
-      .atendilo-widget-text {
-        min-height: 44px;
-      }
-
-      .atendilo-widget-send {
-        min-width: 72px;
-        border: none;
-        border-radius: 12px;
-        background: ${widgetConfig.primaryColor};
-        color: white;
-        padding: 0 15px;
-        cursor: pointer;
-        font-weight: 800;
-        font-size: 13px;
-      }
-
-      .atendilo-widget-send:disabled {
-        opacity: 0.55;
-        cursor: not-allowed;
-      }
-
-      .atendilo-hidden {
-        display: none !important;
-      }
-
-      @media (max-width: 640px) {
-        .atendilo-widget-window {
-          right: 12px;
-          left: 12px;
-          bottom: 82px;
-          width: auto;
-          height: min(540px, calc(100dvh - 104px));
-          max-height: calc(100dvh - 104px);
-          border-radius: 20px;
-        }
-
-        .atendilo-widget-button {
-          right: 16px;
-          bottom: 16px;
-          width: 55px;
-          height: 55px;
-        }
-
-        .atendilo-widget-header {
-          padding: 12px;
-        }
-
-        .atendilo-widget-subtitle {
-          max-width: 190px;
-        }
-
-        .atendilo-widget-messages {
-          padding: 12px;
-        }
-
-        .atendilo-message-bubble {
-          max-width: 88%;
-          font-size: 12.8px;
-        }
-
-        .atendilo-widget-footer {
-          padding: 9px;
-        }
-
-        .atendilo-widget-send {
-          min-width: 64px;
-          padding: 0 12px;
-        }
-      }
-
-      @media (max-width: 380px) {
-        .atendilo-widget-window {
-          right: 8px;
-          left: 8px;
-          bottom: 76px;
-          height: min(510px, calc(100dvh - 94px));
-        }
-
-        .atendilo-widget-subtitle {
-          display: none;
-        }
-
-        .atendilo-widget-header-bottom {
-          margin-top: 8px;
-        }
-
-        .atendilo-widget-status {
-          font-size: 10.5px;
-        }
-
-        .atendilo-widget-end {
-          font-size: 10.5px;
-          padding: 5px 9px;
-        }
-      }
-    `;
-
-    document.head.appendChild(styles);
-
-    const button = document.createElement("button");
-    button.className = "atendilo-widget-button";
-    button.setAttribute("aria-label", `Open ${getAiName()} chat`);
-    button.innerHTML = `
-      <img 
-        src="${escapeHtml(logoUrl)}" 
-        alt="${escapeHtml(getAiName())}" 
-        class="atendilo-widget-button-logo"
-      />
-      <span class="atendilo-unread-badge" data-atendilo-unread>0</span>
-    `;
-
-    const windowEl = document.createElement("div");
-    windowEl.className = "atendilo-widget-window";
-
-    windowEl.innerHTML = `
-      <div class="atendilo-widget-header">
-        <div class="atendilo-widget-header-row">
-          <img 
-            src="${escapeHtml(logoUrl)}" 
-            alt="${escapeHtml(getAiName())}" 
-            class="atendilo-widget-header-logo"
-          />
-
-          <div class="atendilo-widget-header-content">
-            <p class="atendilo-widget-title">${escapeHtml(getAiName())}</p>
-            <p class="atendilo-widget-subtitle">Ask us anything. We usually reply instantly.</p>
-          </div>
-
-          <button class="atendilo-widget-icon-btn" data-atendilo-minimize type="button" aria-label="Minimize chat">
-            −
-          </button>
-        </div>
-
-        <div class="atendilo-widget-header-bottom">
-          <span class="atendilo-widget-status">
-            <span class="atendilo-widget-status-dot"></span>
-            Online now
-          </span>
-
-          <button class="atendilo-widget-end" data-atendilo-end type="button">
-            End chat
-          </button>
-        </div>
-      </div>
-
-      <div class="atendilo-lead-screen" data-atendilo-lead-screen>
-        <div class="atendilo-lead-card">
-          <p class="atendilo-lead-title">Start your chat</p>
-          <p class="atendilo-lead-text">Please enter your details so we can help you better.</p>
-
-          <div class="atendilo-widget-fields">
-            <input class="atendilo-widget-input" data-atendilo-name placeholder="Name *">
-            <input class="atendilo-widget-input" data-atendilo-phone placeholder="Phone *">
-            <input class="atendilo-widget-input" data-atendilo-email placeholder="Email">
-          </div>
-
-          <div class="atendilo-lead-error" data-atendilo-lead-error>
-            Please enter your name and phone number to start.
-          </div>
-
-          <button class="atendilo-primary-action" data-atendilo-start type="button">
-            Start chat
-          </button>
-        </div>
-      </div>
-
-      <div class="atendilo-ended-screen atendilo-hidden" data-atendilo-ended-screen>
-        <div class="atendilo-ended-card">
-          <p class="atendilo-ended-title">Chat ended</p>
-          <p class="atendilo-ended-text">This conversation has ended. You can start a new chat whenever you need help.</p>
-          <button class="atendilo-primary-action" data-atendilo-new-chat type="button">
-            Start new chat
-          </button>
-        </div>
-      </div>
-
-      <div class="atendilo-widget-chat" data-atendilo-chat>
-        <div class="atendilo-visitor-bar" data-atendilo-visitor-bar></div>
-
-        <div class="atendilo-widget-messages" data-atendilo-messages></div>
-
-        <div class="atendilo-widget-footer">
-          <input class="atendilo-widget-text" data-atendilo-message placeholder="Type your message...">
-          <button class="atendilo-widget-send" data-atendilo-send>Send</button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(button);
-    document.body.appendChild(windowEl);
-
-    const leadScreen = windowEl.querySelector("[data-atendilo-lead-screen]");
-    const endedScreen = windowEl.querySelector("[data-atendilo-ended-screen]");
-    const chatScreen = windowEl.querySelector("[data-atendilo-chat]");
-    const messagesEl = windowEl.querySelector("[data-atendilo-messages]");
-    const messageInput = windowEl.querySelector("[data-atendilo-message]");
-    const sendButton = windowEl.querySelector("[data-atendilo-send]");
-    const endButton = windowEl.querySelector("[data-atendilo-end]");
-    const minimizeButton = windowEl.querySelector("[data-atendilo-minimize]");
-    const startButton = windowEl.querySelector("[data-atendilo-start]");
-    const newChatButton = windowEl.querySelector("[data-atendilo-new-chat]");
-    const nameInput = windowEl.querySelector("[data-atendilo-name]");
-    const phoneInput = windowEl.querySelector("[data-atendilo-phone]");
-    const emailInput = windowEl.querySelector("[data-atendilo-email]");
-    const leadError = windowEl.querySelector("[data-atendilo-lead-error]");
-    const visitorBar = windowEl.querySelector("[data-atendilo-visitor-bar]");
-    const unreadBadge = button.querySelector("[data-atendilo-unread]");
-
-    function updateUnreadBadge() {
-      if (!unreadBadge) return;
-
-      if (unreadCount <= 0) {
-        unreadBadge.style.display = "none";
-        unreadBadge.textContent = "0";
-        button.classList.remove("atendilo-has-unread");
-        return;
-      }
-
-      unreadBadge.style.display = "flex";
-      unreadBadge.textContent = unreadCount > 9 ? "9+" : String(unreadCount);
-      button.classList.add("atendilo-has-unread");
-    }
-
-    function clearUnread() {
-      unreadCount = 0;
-      updateUnreadBadge();
-    }
-
-    function addUnread(count = 1) {
-      unreadCount += count;
-      updateUnreadBadge();
-    }
-
-    function requiresLeadCapture() {
-      return Boolean(widgetConfig.captureLeads);
-    }
-
-    function canChat() {
-      if (widgetSession.ended) return false;
-      if (!requiresLeadCapture()) return true;
-      return Boolean(widgetSession.visitorLocked);
-    }
-
-    function syncLeadInputs() {
-      if (nameInput) nameInput.value = widgetSession.visitor?.name || "";
-      if (phoneInput) phoneInput.value = widgetSession.visitor?.phone || "";
-      if (emailInput) emailInput.value = widgetSession.visitor?.email || "";
-
-      const disabled = Boolean(widgetSession.visitorLocked);
-
-      if (nameInput) nameInput.disabled = disabled;
-      if (phoneInput) phoneInput.disabled = disabled;
-      if (emailInput) emailInput.disabled = disabled;
-    }
-
-    function renderVisitorBar() {
-      if (!visitorBar) return;
-
-      if (!widgetSession.visitorLocked) {
-        visitorBar.style.display = "none";
-        visitorBar.innerHTML = "";
-        return;
-      }
-
-      visitorBar.style.display = "block";
-
-      const name = widgetSession.visitor?.name || "Customer";
-      const phone = widgetSession.visitor?.phone || "";
-
-      visitorBar.innerHTML = `
-        Chatting as <strong>${escapeHtml(name)}</strong>${phone ? ` · ${escapeHtml(phone)}` : ""}
-      `;
-    }
-
-    function renderLayout() {
-      syncLeadInputs();
-      renderVisitorBar();
-
-      if (widgetSession.ended) {
-        leadScreen?.classList.add("atendilo-hidden");
-        chatScreen?.classList.add("atendilo-hidden");
-        endedScreen?.classList.remove("atendilo-hidden");
-        stopPollingMessages();
-        return;
-      }
-
-      endedScreen?.classList.add("atendilo-hidden");
-
-      if (requiresLeadCapture() && !widgetSession.visitorLocked) {
-        leadScreen?.classList.remove("atendilo-hidden");
-        chatScreen?.classList.add("atendilo-hidden");
-        stopPollingMessages();
-        return;
-      }
-
-      leadScreen?.classList.add("atendilo-hidden");
-      chatScreen?.classList.remove("atendilo-hidden");
-      renderMessages();
-      startPollingMessages();
-    }
-
-    function openWidget() {
-      windowEl.classList.add("atendilo-open");
-      clearUnread();
-
-      setTimeout(function () {
-        if (canChat()) {
-          messageInput?.focus();
-        } else if (!widgetSession.ended) {
-          nameInput?.focus();
-        }
-      }, 80);
-    }
-
-    function closeWidget() {
-      windowEl.classList.remove("atendilo-open");
-    }
-
-    function shouldShowLocalWelcome() {
-      if (!widgetSession.messages.length) return true;
-
-      const firstMessage = widgetSession.messages[0];
-
-      if (!firstMessage) return true;
-
-      return firstMessage.role === "user";
-    }
-
-    function renderMessages() {
-      if (!messagesEl) return;
-
-      messagesEl.innerHTML = "";
-
-      if (shouldShowLocalWelcome()) {
-        addMessage(
-          "assistant",
-          widgetConfig.welcomeMessage,
-          false,
-          "welcome_message"
-        );
-      }
-
-      widgetSession.messages.forEach((item) => {
-        if (item.role === "agent" && !widgetSession.agentMode) return;
-        addMessage(item.role, item.content, false, item.id, {
-          clientMessageId: item.clientMessageId,
-          createdAt: item.createdAt,
-        });
-      });
-
-      if (isSendingMessage && widgetSession.conversationStatus !== "pending") {
-        showTypingIndicator();
-      }
-    }
-
-    function addMessage(role, content, shouldSave = true, id, extra = {}) {
-      if (!messagesEl || !content) return null;
-
-      const row = document.createElement("div");
-      row.className = `atendilo-message-row ${role}`;
-
-      const bubble = document.createElement("div");
-      bubble.className = "atendilo-message-bubble";
-
-      if (role === "agent") {
-        const label = document.createElement("span");
-        label.className = "atendilo-message-label";
-        label.textContent = "Agent";
-        bubble.appendChild(label);
-      }
-
-      if (role === "assistant") {
-        const label = document.createElement("span");
-        label.className = "atendilo-message-label";
-        label.textContent = getAiName();
-        bubble.appendChild(label);
-      }
-
-      const text = document.createElement("span");
-      text.textContent = content;
-
-      bubble.appendChild(text);
-      row.appendChild(bubble);
-      messagesEl.appendChild(row);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-
-      if (!shouldSave) return null;
-
-      const newMessage = {
-        id:
-          id ||
-          `local_${role}_${Date.now()}_${Math.random()
-            .toString(36)
-            .slice(2)}`,
-        clientMessageId: extra.clientMessageId || createClientMessageId(),
-        role,
-        content,
-        createdAt: extra.createdAt || new Date().toISOString(),
-      };
-
-      widgetSession.messages.push(newMessage);
-      saveSession();
-
-      return newMessage;
-    }
-
-    function showTypingIndicator() {
-      if (!messagesEl) return;
-      if (widgetSession.conversationStatus === "pending") return;
-
-      hideTypingIndicator();
-
-      typingRow = document.createElement("div");
-      typingRow.className = "atendilo-message-row assistant";
-      typingRow.setAttribute("data-atendilo-typing", "true");
-
-      const bubble = document.createElement("div");
-      bubble.className = "atendilo-message-bubble";
-
-      const label = document.createElement("span");
-      label.className = "atendilo-message-label";
-      label.textContent = `${getAiName()} is thinking...`;
-
-      const dots = document.createElement("span");
-      dots.className = "atendilo-typing-dots";
-      dots.innerHTML = "<span></span><span></span><span></span>";
-
-      bubble.appendChild(label);
-      bubble.appendChild(dots);
-      typingRow.appendChild(bubble);
-
-      messagesEl.appendChild(typingRow);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
-
-    function hideTypingIndicator() {
-      if (typingRow?.parentNode) {
-        typingRow.parentNode.removeChild(typingRow);
-      }
-
-      typingRow = null;
-    }
-
-    function lockVisitorAndStart() {
-      const name = nameInput?.value.trim() || "";
-      const phone = phoneInput?.value.trim() || "";
-      const email = emailInput?.value.trim() || "";
-
-      if (requiresLeadCapture() && (!name || !phone)) {
-        if (leadError) leadError.style.display = "block";
-        return;
-      }
-
-      if (leadError) leadError.style.display = "none";
-
-      widgetSession.visitor = {
-        name,
-        phone,
-        email,
-      };
-
-      widgetSession.visitorLocked = true;
-      widgetSession.ended = false;
-
-      saveSession();
-      renderLayout();
-
-      setTimeout(function () {
-        messageInput?.focus();
-      }, 80);
-    }
-
-    async function endCurrentChat(reason = "user") {
-      const currentSessionId = widgetSession.sessionId;
-
-      await endSessionInBackend(currentSessionId, reason);
-
-      widgetSession.ended = true;
-      widgetSession.conversationStatus = "closed";
-      isSendingMessage = false;
-      hideTypingIndicator();
-      saveSession();
-
-      renderLayout();
-    }
-
-    function startNewChat() {
-      sessionStorage.removeItem(sessionKey);
-
-      widgetSession = createEmptySession();
-      isSendingMessage = false;
-      hideTypingIndicator();
-      clearUnread();
-
-      if (!requiresLeadCapture()) {
-        widgetSession.visitorLocked = true;
-      }
-
-      saveSession();
-      renderLayout();
-
-      setTimeout(function () {
-        if (requiresLeadCapture()) {
-          nameInput?.focus();
-        } else {
-          messageInput?.focus();
-        }
-      }, 80);
-    }
-
-    async function fetchServerMessages() {
-      if (!widgetSession.sessionId || widgetSession.ended || !canChat()) return;
-      if (isPollingMessages) return;
-
-      isPollingMessages = true;
-
-      try {
-        const response = await fetch(
-          `${apiUrl}/api/webchat/messages?businessId=${encodeURIComponent(
-            businessId
-          )}&sessionId=${encodeURIComponent(widgetSession.sessionId)}`
-        );
-
-        if (!response.ok) return;
-
-        const data = await response.json();
-
-        if (data.status) {
-          widgetSession.conversationStatus = data.status;
-        }
-
-        if (data.status === "pending") {
-          widgetSession.agentMode = true;
-          isSendingMessage = false;
-          hideTypingIndicator();
-        }
-
-        if (data.status === "closed" && !widgetSession.ended) {
-          widgetSession.ended = true;
-          widgetSession.conversationStatus = "closed";
-          isSendingMessage = false;
-          hideTypingIndicator();
-          saveSession();
-          renderLayout();
-          return;
-        }
-
-        const serverMessages = Array.isArray(data.messages)
-          ? data.messages.map(normalizeMessage).filter((item) => item.content)
-          : [];
-
-        widgetSession.conversationId =
-          data.conversationId || widgetSession.conversationId;
-
-        const visibleServerMessages = serverMessages.filter((item) => {
-          if (item.role === "agent" && !widgetSession.agentMode) return false;
-          return true;
-        });
-
-        const previousFingerprints = new Set(
-          widgetSession.messages.map((item) => getMessageFingerprint(item))
-        );
-
-        const mergedMessages = mergeMessages(
-          widgetSession.messages,
-          visibleServerMessages
-        );
-
-        const newIncomingMessages = mergedMessages.filter((item) => {
-          const fingerprint = getMessageFingerprint(item);
-
-          if (previousFingerprints.has(fingerprint)) return false;
-
-          return item.role === "assistant" || item.role === "agent";
-        });
-
-        const currentSignature = widgetSession.messages
-          .map((item) => getMessageFingerprint(item))
-          .join("|");
-
-        const mergedSignature = mergedMessages
-          .map((item) => getMessageFingerprint(item))
-          .join("|");
-
-        if (currentSignature !== mergedSignature || data.status) {
-          widgetSession.messages = mergedMessages;
-          saveSession();
-          renderMessages();
-
-          if (!isWidgetOpen(windowEl) && newIncomingMessages.length > 0) {
-            addUnread(newIncomingMessages.length);
-          }
-        }
-      } catch (error) {
-        console.error("Atendilo fetch messages error:", error);
-      } finally {
-        isPollingMessages = false;
-      }
-    }
-
-    function startPollingMessages() {
-      if (pollingTimer) return;
-
-      fetchServerMessages();
-
-      pollingTimer = window.setInterval(function () {
-        fetchServerMessages();
-      }, pollingIntervalMs);
-    }
-
-    function stopPollingMessages() {
-      if (!pollingTimer) return;
-
-      window.clearInterval(pollingTimer);
-      pollingTimer = null;
-    }
-
-    async function sendMessage() {
-      const message = messageInput?.value.trim();
-
-      if (!message || !messageInput || !sendButton) return;
-
-      if (!canChat()) {
-        renderLayout();
-        return;
-      }
-
-      if (isSendingMessage) return;
-
-      const clientMessageId = createClientMessageId();
-
-      if (isHumanAgentRequest(message)) {
-        widgetSession.agentMode = true;
-      }
-
-      saveSession();
-
-      addMessage("user", message, true, undefined, {
-        clientMessageId,
-      });
-
-      messageInput.value = "";
-      sendButton.disabled = true;
-      sendButton.textContent = "...";
-
-      const shouldShowAiTyping =
-        !widgetSession.agentMode &&
-        widgetSession.conversationStatus !== "pending";
-
-      isSendingMessage = shouldShowAiTyping;
-
-      if (shouldShowAiTyping) {
-        showTypingIndicator();
-      }
-
-      try {
-        const response = await createFetchWithTimeout(
-          `${apiUrl}/api/webchat/message`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              businessId,
-              sessionId: widgetSession.sessionId,
-              message,
-              clientMessageId,
-              visitor: {
-                name: widgetSession.visitor?.name || undefined,
-                phone: widgetSession.visitor?.phone || undefined,
-                email: widgetSession.visitor?.email || undefined,
-              },
-            }),
-          },
-          45000
-        );
-
-        let data = null;
-
-        try {
-          data = await response.json();
-        } catch {
-          data = null;
-        }
-
-        if (!response.ok) {
-          throw new Error(data?.error || "Message failed.");
-        }
-
-        if (data?.conversationId) {
-          widgetSession.conversationId = data.conversationId;
-        }
-
-        if (data?.status) {
-          widgetSession.conversationStatus = data.status;
-        }
-
-        if (data?.status === "pending") {
-          widgetSession.agentMode = true;
-          isSendingMessage = false;
-          hideTypingIndicator();
-        }
-
-        hideTypingIndicator();
-
-        if (data?.reply) {
-          addMessage("assistant", data.reply);
-        }
-
-        await fetchServerMessages();
-      } catch (error) {
-        console.error("Atendilo widget error:", error);
-
-        hideTypingIndicator();
-
-        await fetchServerMessages();
-
-        if (widgetSession.conversationStatus === "closed") {
-          widgetSession.ended = true;
-          saveSession();
-          renderLayout();
-          return;
-        }
-
-        if (widgetSession.conversationStatus !== "pending") {
-          addMessage(
-            "assistant",
-            "Sorry, I could not send your message right now. Please try again."
-          );
-        }
-      } finally {
-        isSendingMessage = false;
-        hideTypingIndicator();
-        sendButton.disabled = false;
-        sendButton.textContent = "Send";
-        messageInput.focus();
-      }
-    }
-
-    if (!requiresLeadCapture() && !widgetSession.visitorLocked) {
-      widgetSession.visitorLocked = true;
-      saveSession();
-    }
-
-    updateUnreadBadge();
-    renderLayout();
-
-    button.addEventListener("click", function () {
-      if (isWidgetOpen(windowEl)) {
-        closeWidget();
-      } else {
-        openWidget();
-      }
-    });
-
-    minimizeButton?.addEventListener("click", function () {
-      closeWidget();
-    });
-
-    startButton?.addEventListener("click", function () {
-      lockVisitorAndStart();
-    });
-
-    newChatButton?.addEventListener("click", function () {
-      startNewChat();
-    });
-
-    endButton?.addEventListener("click", async function () {
-      await endCurrentChat("user");
-    });
-
-    sendButton?.addEventListener("click", sendMessage);
-
-    messageInput?.addEventListener("keydown", function (event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        sendMessage();
-      }
-    });
-
-    nameInput?.addEventListener("keydown", function (event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        lockVisitorAndStart();
-      }
-    });
-
-    phoneInput?.addEventListener("keydown", function (event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        lockVisitorAndStart();
-      }
-    });
-
-    emailInput?.addEventListener("keydown", function (event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        lockVisitorAndStart();
-      }
-    });
-
-    setInterval(async function () {
-      const lastActivityAt = Number(widgetSession.lastActivityAt || 0);
-
-      if (!lastActivityAt || widgetSession.ended) return;
-
-      const isExpired = Date.now() - lastActivityAt > inactivityLimit;
-
-      if (!isExpired) return;
-
-      await endCurrentChat("inactivity");
-    }, 60 * 1000);
+    scrollToBottom();
   }
+
+  function appendMessage(message) {
+    const sender = normalizeSender(message.sender_type);
+    const item = document.createElement("div");
+    item.className = `atendilo-message ${sender}`;
+
+    const label =
+      sender === "customer"
+        ? ""
+        : `<span class="atendilo-bubble-label">${sender === "agent" ? "Agent" : escapeHtml(state.config?.widgetTitle || "AI")}</span>`;
+
+    item.innerHTML = `
+      <div class="atendilo-bubble">
+        ${label}
+        ${escapeHtml(message.content)}
+      </div>
+    `;
+
+    messagesEl.appendChild(item);
+  }
+
+  function scrollToBottom() {
+    requestAnimationFrame(() => {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    });
+  }
+
+  async function fetchJson(url, options) {
+    const response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+      ...options,
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(data?.message || data?.error || "Request failed");
+    }
+
+    return data;
+  }
+
+  async function loadConfig() {
+    setLoading(true);
+
+    try {
+      const config = await fetchJson(endpoints.config);
+
+      state.config = {
+        businessId: config.businessId || BUSINESS_ID,
+        channelId: config.channelId || null,
+        status: config.status || "inactive",
+        widgetTitle: config.widgetTitle || "Angela AI",
+        welcomeMessage:
+          config.welcomeMessage ||
+          `Hi! Welcome to my business. How can I help you today?`,
+        primaryColor: config.primaryColor || "#ee82ee",
+        captureLeads:
+          typeof config.captureLeads === "boolean" ? config.captureLeads : true,
+      };
+
+      injectStyles(state.config.primaryColor);
+
+      titleEl.textContent = state.config.widgetTitle;
+      subtitleEl.textContent = "Ask us anything. We usually reply instantly.";
+
+      if (!state.config.captureLeads) {
+        state.visitor = null;
+      }
+
+      updateUIByLeadMode();
+      await loadMessages();
+    } catch (error) {
+      console.error("[Atendilo Widget] Config error:", error);
+      injectStyles("#ee82ee");
+      updateUIByLeadMode();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadMessages() {
+    try {
+      const params = new URLSearchParams({
+        businessId: BUSINESS_ID,
+        sessionId: state.sessionId,
+      });
+
+      const data = await fetchJson(`${endpoints.messages}?${params.toString()}`);
+
+      state.conversationId = data.conversationId || state.conversationId;
+      state.conversationStatus = data.status || state.conversationStatus;
+      state.messages = Array.isArray(data.messages) ? data.messages : [];
+
+      renderMessages();
+      renderHandoffBanner();
+    } catch (error) {
+      console.error("[Atendilo Widget] Load messages error:", error);
+    }
+  }
+
+  async function sendMessage(content) {
+    const text = String(content || "").trim();
+    if (!text || state.isSending) return;
+
+    setSending(true);
+
+    const optimisticMessage = {
+      id: `local_${Date.now()}`,
+      sender_type: "contact",
+      content: text,
+      created_at: new Date().toISOString(),
+    };
+
+    state.messages.push(optimisticMessage);
+    renderMessages();
+
+    messageInput.value = "";
+
+    try {
+      const data = await fetchJson(endpoints.send, {
+        method: "POST",
+        body: JSON.stringify({
+          businessId: BUSINESS_ID,
+          sessionId: state.sessionId,
+          message: text,
+          visitor: state.visitor,
+          clientMessageId: optimisticMessage.id,
+        }),
+      });
+
+      state.conversationId = data.conversationId || state.conversationId;
+      state.conversationStatus = data.status || state.conversationStatus;
+
+      await loadMessages();
+
+      if (data.reply && !state.messages.some((m) => m.content === data.reply)) {
+        state.messages.push({
+          id: `ai_${Date.now()}`,
+          sender_type: "ai",
+          content: data.reply,
+          created_at: new Date().toISOString(),
+        });
+
+        renderMessages();
+      }
+
+      renderHandoffBanner();
+    } catch (error) {
+      console.error("[Atendilo Widget] Send error:", error);
+
+      state.messages.push({
+        id: `error_${Date.now()}`,
+        sender_type: "ai",
+        content:
+          "Sorry, something went wrong while sending your message. Please try again.",
+        created_at: new Date().toISOString(),
+      });
+
+      renderMessages();
+    } finally {
+      setSending(false);
+      messageInput.focus();
+    }
+  }
+
+  async function endChat() {
+    try {
+      await fetchJson(endpoints.end, {
+        method: "POST",
+        body: JSON.stringify({
+          businessId: BUSINESS_ID,
+          sessionId: state.sessionId,
+          reason: "customer",
+        }),
+      });
+    } catch (error) {
+      console.error("[Atendilo Widget] End chat error:", error);
+    }
+
+    state.messages = [];
+    state.conversationId = null;
+    state.conversationStatus = null;
+    state.visitor = null;
+    state.sessionId = crypto.randomUUID
+      ? crypto.randomUUID()
+      : `session_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+    renderHandoffBanner();
+    updateUIByLeadMode();
+    renderMessages();
+    hidePanel();
+  }
+
+  function startPolling() {
+    stopPolling();
+
+    state.pollingInterval = window.setInterval(() => {
+      if (!state.isOpen || shouldShowLeadForm()) return;
+      loadMessages();
+    }, 3500);
+  }
+
+  function stopPolling() {
+    if (state.pollingInterval) {
+      window.clearInterval(state.pollingInterval);
+      state.pollingInterval = null;
+    }
+  }
+
+  launcher.addEventListener("click", () => {
+    if (state.isOpen) {
+      hidePanel();
+    } else {
+      showPanel();
+    }
+  });
+
+  minimizeBtn.addEventListener("click", minimizePanel);
+
+  endBtn.addEventListener("click", endChat);
+
+  leadForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const name = nameInput.value.trim();
+    const phone = phoneInput.value.trim();
+    const email = emailInput.value.trim();
+
+    if (!name || !phone) {
+      if (!name) nameInput.focus();
+      else phoneInput.focus();
+      return;
+    }
+
+    state.visitor = {
+      name,
+      phone,
+      email: email || null,
+    };
+
+    updateUIByLeadMode();
+    renderMessages();
+    startPolling();
+  });
+
+  composer.addEventListener("submit", (event) => {
+    event.preventDefault();
+    sendMessage(messageInput.value);
+  });
+
+  messageInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      sendMessage(messageInput.value);
+    }
+  });
+
+  window.addEventListener("beforeunload", () => {
+    stopPolling();
+  });
+
+  loadConfig();
 })();

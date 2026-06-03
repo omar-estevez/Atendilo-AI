@@ -1,4 +1,4 @@
-import type { BookingStatus } from "@/services/dashboard/bookingsService";
+import type { Booking, BookingStatus } from "@/services/dashboard/bookingsService";
 import { CheckCircle2, Clock, XCircle, Calendar } from "lucide-react";
 
 export const formatStatus = (status: BookingStatus) => {
@@ -117,4 +117,43 @@ export const getStatusContainerClass = (status: BookingStatus) => {
         default:
             return "border-primary/20 bg-primary/10";
     }
+};
+
+const formatLabel = (value?: string | null) => {
+    if (!value) return "Unknown";
+
+    return value
+        .replaceAll("_", " ")
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+export const getBookingContactName = (booking: Booking) => {
+    return (
+        booking.contacts?.full_name ||
+        booking.customer_name ||
+        booking.contacts?.email ||
+        booking.contacts?.phone ||
+        "Unknown Contact"
+    );
+};
+
+export const getBookingContactSubtitle = (booking: Booking) => {
+    const items = [booking.contacts?.email, booking.contacts?.phone].filter(Boolean);
+
+    return items.length > 0 ? items.join(" · ") : "No contact details";
+};
+
+export const getBookingConversationDescription = (booking: Booking) => {
+    if (!booking.conversations) return "No conversation linked";
+
+    const channel =
+        booking.conversations.channels?.name ||
+        booking.conversations.channels?.type ||
+        "Web Chat";
+
+    const intent = formatLabel(booking.conversations.intent);
+    const status = formatLabel(booking.conversations.status);
+    const score = booking.conversations.ai_score ?? 0;
+
+    return `${channel} · ${intent} · ${status} · Score ${score}%`;
 };

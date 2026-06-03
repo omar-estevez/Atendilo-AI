@@ -12,7 +12,6 @@ import {
     XCircle,
     CalendarDays,
     // AlertTriangle,
-    User,
     MessageSquare,
 } from "lucide-react";
 
@@ -20,11 +19,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useBookingsStore } from "@/store/dashboard/bookingsStore";
 import type { Booking, BookingStatus } from "@/services/dashboard/bookingsService";
-import { isToday, isThisWeek, getStatusContainerClass, getStatusIcon, formatDate, formatTime, getStatusClass, formatStatus, getInitials, formatFullDate } from "./helpers/BookingHelpers";
+import { isToday, isThisWeek, getStatusContainerClass, getStatusIcon, formatDate, formatTime, getStatusClass, formatStatus, getInitials, formatFullDate, getBookingContactName, getBookingContactSubtitle, getBookingConversationDescription } from "./helpers/BookingHelpers";
 import NewBookingModal from "./new-booking/NewBookingModal";
 import { useAuthStore } from "@/store/authStore";
+import { useNavigate } from "react-router";
 
 export const BookingsPage = () => {
+
+    const navigate = useNavigate();
+
     const {
         bookings,
         selectedBooking,
@@ -530,27 +533,47 @@ export const BookingsPage = () => {
                                     </p>
                                 </div>
 
-                                <div className="grid gap-4 md:grid-cols-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="rounded-xl border border-border/60 bg-background/40 p-4">
-                                        <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <User className="h-4 w-4" />
-                                            Contact ID
-                                        </p>
-                                        <p className="mt-1 truncate text-sm font-medium">
-                                            {selectedBooking.contact_id ||
-                                                "No contact linked"}
-                                        </p>
+                                        <div className="flex items-start gap-3">
+                                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+                                                {getInitials(getBookingContactName(selectedBooking))}
+                                            </div>
+
+                                            <div className="min-w-0">
+                                                <p className="text-xs text-muted-foreground">Contact</p>
+                                                <p className="mt-1 truncate text-sm font-semibold">
+                                                    {getBookingContactName(selectedBooking)}
+                                                </p>
+                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                    {getBookingContactSubtitle(selectedBooking)}
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="rounded-xl border border-border/60 bg-background/40 p-4">
-                                        <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <MessageSquare className="h-4 w-4" />
-                                            Conversation ID
+                                        <p className="text-xs text-muted-foreground">Conversation</p>
+
+                                        <p className="mt-2 text-sm font-semibold">
+                                            {getBookingConversationDescription(selectedBooking)}
                                         </p>
-                                        <p className="mt-1 truncate text-sm font-medium">
-                                            {selectedBooking.conversation_id ||
-                                                "No conversation linked"}
-                                        </p>
+
+                                        {selectedBooking.conversation_id && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="mt-4"
+                                                onClick={() =>
+                                                    navigate(
+                                                        `/dashboard/conversations?conversationId=${selectedBooking.conversation_id}`
+                                                    )
+                                                }
+                                            >
+                                                Open Conversation
+                                                <MessageSquare className="ml-2 h-3.5 w-3.5" />
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
 
