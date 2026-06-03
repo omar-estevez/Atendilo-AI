@@ -12,6 +12,7 @@ const triggerOptions = [
     { value: "service_question", label: "Service Question" },
     { value: "price_question", label: "Price Question" },
     { value: "booking_request", label: "Booking Request" },
+    { value: "booking_ready", label: "Booking Ready / Confirmed" },
     { value: "human_handoff", label: "Human Handoff" },
     { value: "lead_score", label: "Lead Score Reached" },
     { value: "follow_up_required", label: "Follow-up Required" },
