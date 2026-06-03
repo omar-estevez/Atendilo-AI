@@ -36,8 +36,13 @@ interface DashboardStats {
     totalContacts: number;
     totalConversations: number;
     openConversations: number;
+    pendingConversations: number;
+    closedConversations: number;
     activeChannels: number;
     totalMessages: number;
+    hotLeads: number;
+    pendingFollowUps: number;
+    humanHandoffs: number;
 }
 
 interface DashboardDataStore {
@@ -78,8 +83,13 @@ const initialStats: DashboardStats = {
     totalContacts: 0,
     totalConversations: 0,
     openConversations: 0,
+    pendingConversations: 0,
+    closedConversations: 0,
     activeChannels: 0,
     totalMessages: 0,
+    hotLeads: 0,
+    pendingFollowUps: 0,
+    humanHandoffs: 0,
 };
 
 function calculateStats(input: {
@@ -90,15 +100,49 @@ function calculateStats(input: {
 }): DashboardStats {
     const { channels, contacts, conversations, latestMessagesCount } = input;
 
+    const leadIntents = [
+        "booking_request",
+        "price_question",
+        "service_question",
+        "human_handoff",
+        "complaint",
+    ];
+
+    const hotLeads = conversations.filter((conversation) => {
+        const score = conversation.ai_score || 0;
+        const intent = conversation.intent || "";
+
+        return score >= 85 && (leadIntents.includes(intent) || score >= 75);
+    }).length;
+
+    const pendingFollowUps = conversations.filter(
+        (conversation) => conversation.follow_up_required === true
+    ).length;
+
+    const humanHandoffs = conversations.filter(
+        (conversation) =>
+            conversation.intent === "human_handoff" ||
+            conversation.needs_human === true
+    ).length;
+
     return {
         totalContacts: contacts.length,
         totalConversations: conversations.length,
         openConversations: conversations.filter(
             (conversation) => conversation.status === "open"
         ).length,
+        pendingConversations: conversations.filter(
+            (conversation) => conversation.status === "pending"
+        ).length,
+        closedConversations: conversations.filter(
+            (conversation) => conversation.status === "closed"
+        ).length,
         activeChannels: channels.filter((channel) => channel.status === "active")
             .length,
         totalMessages: latestMessagesCount,
+        hotLeads,
+        pendingFollowUps,
+        humanHandoffs,
     };
 }
 

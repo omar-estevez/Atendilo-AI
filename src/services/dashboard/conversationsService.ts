@@ -25,6 +25,10 @@ export interface ConversationWithRelations extends Conversation {
     contacts: Contact | null;
     channels: Channel | null;
     messages?: ConversationPreviewMessage[];
+    needs_human: boolean | null;
+    follow_up_required: boolean | null;
+    follow_up_at: string | null;
+    follow_up_note: string | null;
 }
 
 export interface RecentConversation extends ConversationWithRelations {

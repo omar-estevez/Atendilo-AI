@@ -5,10 +5,8 @@ import {
     Brain,
     Crown,
     MessageSquare,
-    Radio,
     RotateCcw,
     Target,
-    Users,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 
@@ -25,6 +23,7 @@ import { BannerSection } from "./sections/BannerSection";
 import { BookingsSection } from "./sections/BookingsSection";
 import { AiFlowsSection } from "./sections/AiFlowsSection";
 import { getUsageColor, getUsagePercentage } from "./helpers/BillingMainHelpers";
+import { FollowUpsSection } from "./sections/FollowUpsSection";
 
 export const MainPage = () => {
     const navigate = useNavigate();
@@ -85,32 +84,32 @@ export const MainPage = () => {
 
     const kpiCards = [
         {
-            id: "contacts",
-            label: "Total Contacts",
-            value: stats.totalContacts.toLocaleString(),
-            change: "Real data",
-            icon: Users,
-        },
-        {
             id: "conversations",
             label: "Total Conversations",
             value: stats.totalConversations.toLocaleString(),
-            change: "Real data",
+            change: "All customer conversations",
             icon: MessageSquare,
         },
         {
-            id: "open",
-            label: "Open Conversations",
-            value: stats.openConversations.toLocaleString(),
-            change: "Needs attention",
+            id: "pending",
+            label: "Pending Conversations",
+            value: stats.pendingConversations.toLocaleString(),
+            change: "Need human attention",
             icon: Target,
         },
         {
-            id: "channels",
-            label: "Active Channels",
-            value: stats.activeChannels.toLocaleString(),
-            change: "Connected",
-            icon: Radio,
+            id: "hot-leads",
+            label: "Hot Leads",
+            value: stats.hotLeads.toLocaleString(),
+            change: "High conversion opportunity",
+            icon: Crown,
+        },
+        {
+            id: "follow-ups",
+            label: "Pending Follow-ups",
+            value: stats.pendingFollowUps.toLocaleString(),
+            change: "Marked from Leads",
+            icon: RotateCcw,
         },
     ];
 
@@ -187,6 +186,8 @@ export const MainPage = () => {
                     );
                 })}
             </div>
+
+            {canViewConversations && <FollowUpsSection />}
 
             {(canViewAiActivity || canViewConversations) && (
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
