@@ -1,8 +1,18 @@
-import type { EscalationContactTypes, EscalationRuleKey } from "@/dashboard/types";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
+import {
+    Mail,
+    Phone,
+    ShieldAlert,
+    ToggleLeft,
+    ToggleRight,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Mail, Phone, ShieldAlert, ToggleLeft, ToggleRight } from "lucide-react";
-import type { Dispatch, ReactNode, SetStateAction } from "react";
+import type {
+    EscalationContactTypes,
+    EscalationRuleKey,
+} from "@/dashboard/types";
 
 interface EscalationRulesProps {
     sectionHeader: (
@@ -11,7 +21,6 @@ interface EscalationRulesProps {
         description?: string
     ) => ReactNode;
     inputClass: string;
-    showSavedMessage?: (message: string) => void;
     escalationContact: EscalationContactTypes;
     setEscalationContact: Dispatch<SetStateAction<EscalationContactTypes>>;
     escalationRules: Record<EscalationRuleKey, boolean>;
@@ -26,27 +35,27 @@ const rules: {
         {
             key: "refund",
             label: "Customer asks for refund",
-            description: "Escalate refund, cancellation or money-back requests.",
+            description: "Hand off refund, cancellation, or money-back requests.",
         },
         {
             key: "angry",
             label: "Customer is angry",
-            description: "Escalate negative, aggressive or frustrated conversations.",
+            description: "Hand off negative, aggressive, or frustrated conversations.",
         },
         {
             key: "customPricing",
             label: "Customer requests custom pricing",
-            description: "Escalate quotes that require manual review.",
+            description: "Hand off quotes that require manual review.",
         },
         {
             key: "human",
             label: "Customer wants a person",
-            description: "Escalate when the customer asks for a human directly.",
+            description: "Hand off when the customer asks for a human directly.",
         },
         {
             key: "lowConfidence",
             label: "AI confidence is below 70%",
-            description: "Escalate when AI is not confident enough.",
+            description: "Hand off when AI is not confident enough.",
         },
     ];
 
@@ -59,71 +68,63 @@ export const EscalationRules = ({
     toggleEscalationRule,
 }: EscalationRulesProps) => {
     return (
-        <Card className="overflow-hidden border-border/50 bg-card/60">
-            <div className="border-b border-border/50 bg-background/30 p-5">
-                {sectionHeader(
-                    <ShieldAlert className="h-5 w-5" />,
-                    "Escalation Rules",
-                    "Decide when Atendilo should hand off the conversation to a human."
-                )}
-            </div>
+        <Card className="border-border/60 bg-card/80 p-6">
+            {sectionHeader(
+                <ShieldAlert className="h-5 w-5 text-primary" />,
+                "Human Handoff Rules",
+                "Decide when Atendilo should stop handling the conversation alone and alert a human."
+            )}
 
-            <div className="space-y-5 p-5">
-                <div className="grid gap-3 md:grid-cols-2">
-                    {rules.map((rule) => {
-                        const isEnabled = escalationRules[rule.key];
+            <div className="space-y-3">
+                {rules.map((rule) => {
+                    const isEnabled = escalationRules[rule.key];
 
-                        return (
-                            <div
-                                key={rule.key}
-                                className="flex items-start justify-between gap-3 rounded-xl border border-border/40 bg-background/40 p-4"
-                            >
-                                <div>
-                                    <p className="font-medium">{rule.label}</p>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        {rule.description}
-                                    </p>
-                                    <p
-                                        className={`mt-2 text-xs ${isEnabled
-                                            ? "text-emerald-400"
-                                            : "text-muted-foreground"
-                                            }`}
-                                    >
-                                        {isEnabled ? "Enabled" : "Disabled"}
-                                    </p>
-                                </div>
+                    return (
+                        <div
+                            key={rule.key}
+                            className="flex flex-col gap-3 rounded-2xl border border-border bg-background/50 p-4 md:flex-row md:items-center md:justify-between"
+                        >
+                            <div>
+                                <h4 className="font-semibold">{rule.label}</h4>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    {rule.description}
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm text-muted-foreground">
+                                    {isEnabled ? "Enabled" : "Disabled"}
+                                </span>
 
                                 <Button
                                     type="button"
                                     variant="ghost"
-                                    size="sm"
-                                    onClick={() =>
-                                        toggleEscalationRule(rule.key)
-                                    }
+                                    size="icon"
+                                    onClick={() => toggleEscalationRule(rule.key)}
                                 >
                                     {isEnabled ? (
-                                        <ToggleRight className="h-7 w-7 text-primary" />
+                                        <ToggleRight className="h-6 w-6 text-primary" />
                                     ) : (
-                                        <ToggleLeft className="h-7 w-7 text-muted-foreground" />
+                                        <ToggleLeft className="h-6 w-6 text-muted-foreground" />
                                     )}
                                 </Button>
                             </div>
-                        );
-                    })}
-                </div>
+                        </div>
+                    );
+                })}
+            </div>
 
-                <div className="rounded-2xl border border-border/50 bg-secondary/20 p-5">
-                    <h4 className="mb-4 font-semibold">Escalation Contact</h4>
+            <div className="mt-6 rounded-2xl border border-border bg-background/50 p-4">
+                <h4 className="mb-4 font-semibold">Human Handoff Contact</h4>
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div>
-                            <label className="mb-2 flex items-center gap-2 text-sm font-medium">
-                                <Phone className="h-4 w-4 text-primary" />
-                                Phone Number
-                            </label>
-
+                <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label className="mb-2 block text-sm font-medium">
+                            Phone Number
+                        </label>
+                        <div className="relative">
+                            <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <input
-                                type="tel"
                                 value={escalationContact.phone}
                                 onChange={(event) =>
                                     setEscalationContact({
@@ -132,18 +133,16 @@ export const EscalationRules = ({
                                     })
                                 }
                                 placeholder="+1 346 000 0000"
-                                className={inputClass}
+                                className={`${inputClass} pl-10`}
                             />
                         </div>
+                    </div>
 
-                        <div>
-                            <label className="mb-2 flex items-center gap-2 text-sm font-medium">
-                                <Mail className="h-4 w-4 text-primary" />
-                                Email
-                            </label>
-
+                    <div>
+                        <label className="mb-2 block text-sm font-medium">Email</label>
+                        <div className="relative">
+                            <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <input
-                                type="email"
                                 value={escalationContact.email}
                                 onChange={(event) =>
                                     setEscalationContact({
@@ -152,7 +151,7 @@ export const EscalationRules = ({
                                     })
                                 }
                                 placeholder="owner@business.com"
-                                className={inputClass}
+                                className={`${inputClass} pl-10`}
                             />
                         </div>
                     </div>

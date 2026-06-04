@@ -1,39 +1,37 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Save } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/store/authStore";
+
 import { BusinessProfile } from "./business-profile/BusinessProfile";
 import { ServicesPricing } from "./services-pricing/ServicesPricing";
 import { BusinessHours } from "./business-hours/BusinessHours";
-import { AiAssistant } from "./ai-assistant/AiAssistant";
-import { BusinessFaqs } from "./business-faqs/BusinessFaqs";
 import { BookingRules } from "./booking-rules/BookingRules";
 import { EscalationRules } from "./escalation-rules/EscalationRules";
-import { useAuthStore } from "@/store/authStore";
+import { AiKnowledge } from "./ai-knowledge/AiKnowledge";
 
 import type {
-    AiAssistantType,
     BusinessBookingTypes,
     BusinessDay,
-    BusinessFaq,
-    BusinessNewFaq,
     BusinessNewService,
     BusinessProfileType,
     BusinessService,
     EscalationContactTypes,
     EscalationRuleKey,
 } from "@/dashboard/types";
-import { toast } from "sonner";
-import { AiKnowledge } from "./ai-knowledge/AiKnowledge";
 
 type BusinessSettings = {
     services?: BusinessService[];
     businessHours?: BusinessDay[];
-    aiAssistant?: AiAssistantType;
-    faqs?: BusinessFaq[];
     bookingRules?: BusinessBookingTypes;
     escalationRules?: Record<EscalationRuleKey, boolean>;
     escalationContact?: EscalationContactTypes;
+
+    // Legacy fields kept only to avoid breaking old businesses that still have them in settings.
+    aiAssistant?: unknown;
+    faqs?: unknown;
 };
 
 const defaultServices: BusinessService[] = [
@@ -46,20 +44,6 @@ const defaultServices: BusinessService[] = [
     },
 ];
 
-const defaultFaqs: BusinessFaq[] = [
-    {
-        id: "faq_001",
-        question: "Do you go to the customer’s location?",
-        answer:
-            "Yes, we provide mobile service in Houston and surrounding areas.",
-    },
-    {
-        id: "faq_002",
-        question: "What payment methods do you accept?",
-        answer: "We accept cash, Zelle, and card payments.",
-    },
-];
-
 const defaultHours: BusinessDay[] = [
     { day: "Monday", open: "09:00", close: "18:00", enabled: true },
     { day: "Tuesday", open: "09:00", close: "18:00", enabled: true },
@@ -69,16 +53,6 @@ const defaultHours: BusinessDay[] = [
     { day: "Saturday", open: "09:00", close: "18:00", enabled: true },
     { day: "Sunday", open: "09:00", close: "18:00", enabled: false },
 ];
-
-const defaultAiAssistant: AiAssistantType = {
-    name: "Sofia",
-    tone: "Friendly",
-    goal: "Capture leads and book appointments",
-    language: "English",
-    responseStyle: "Short, clear, sales-focused",
-    instructions:
-        "Always greet customers politely. Ask what service they need, what vehicle or project they have, and their preferred date/time. If the customer asks for pricing, provide starting prices and offer to book an appointment. If the customer sounds upset, escalate to a human.",
-};
 
 const defaultBookingRules: BusinessBookingTypes = {
     minimumNotice: "1 hour",
@@ -101,24 +75,22 @@ const defaultEscalationContact: EscalationContactTypes = {
 };
 
 export const BusinessPage = () => {
-
-    const { business, updateBusiness } = useAuthStore()
+    const { business, updateBusiness } = useAuthStore();
 
     const settings = (business?.settings || {}) as BusinessSettings;
 
-    const [businessProfile, setBusinessProfile] =
-        useState<BusinessProfileType>({
-            businessName: business?.name || "",
-            industry: business?.industry || "",
-            address: business?.address || "",
-            city: business?.city || "",
-            state: business?.state || "",
-            country: business?.country || "United States",
-            timezone: business?.timezone || "America/Chicago",
-            email: business?.email || "",
-            phone: business?.phone || "",
-            website: business?.website || "",
-        });
+    const [businessProfile, setBusinessProfile] = useState<BusinessProfileType>({
+        businessName: business?.name || "",
+        industry: business?.industry || "",
+        address: business?.address || "",
+        city: business?.city || "",
+        state: business?.state || "",
+        country: business?.country || "United States",
+        timezone: business?.timezone || "America/Chicago",
+        email: business?.email || "",
+        phone: business?.phone || "",
+        website: business?.website || "",
+    });
 
     const [services, setServices] = useState<BusinessService[]>(
         settings.services?.length ? settings.services : defaultServices
@@ -132,30 +104,13 @@ export const BusinessPage = () => {
     });
 
     const [businessHours, setBusinessHours] = useState<BusinessDay[]>(
-        settings.businessHours?.length
-            ? settings.businessHours
-            : defaultHours
+        settings.businessHours?.length ? settings.businessHours : defaultHours
     );
 
-    const [aiAssistant, setAiAssistant] = useState<AiAssistantType>({
-        ...defaultAiAssistant,
-        ...(settings.aiAssistant || {}),
+    const [bookingRules, setBookingRules] = useState<BusinessBookingTypes>({
+        ...defaultBookingRules,
+        ...(settings.bookingRules || {}),
     });
-
-    const [faqs, setFaqs] = useState<BusinessFaq[]>(
-        settings.faqs?.length ? settings.faqs : defaultFaqs
-    );
-
-    const [newFaq, setNewFaq] = useState<BusinessNewFaq>({
-        question: "",
-        answer: "",
-    });
-
-    const [bookingRules, setBookingRules] =
-        useState<BusinessBookingTypes>({
-            ...defaultBookingRules,
-            ...(settings.bookingRules || {}),
-        });
 
     const [escalationRules, setEscalationRules] = useState<
         Record<EscalationRuleKey, boolean>
@@ -179,26 +134,20 @@ export const BusinessPage = () => {
     const smallSelectClass =
         "h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-primary";
 
-    const showSavedMessage = (message: string) => {
-        toast.success(message)
-    };
-
     const sectionHeader = (
-        icon: React.ReactNode,
+        icon: ReactNode,
         title: string,
         description?: string
     ) => (
-        <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <div className="mb-5 flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                 {icon}
             </div>
 
             <div>
-                <h3 className="font-semibold">{title}</h3>
+                <h3 className="text-lg font-semibold">{title}</h3>
                 {description && (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        {description}
-                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">{description}</p>
                 )}
             </div>
         </div>
@@ -225,18 +174,17 @@ export const BusinessPage = () => {
                 email: businessProfile.email.trim() || null,
                 phone: businessProfile.phone.trim() || null,
                 website: businessProfile.website.trim() || null,
+
                 settings: {
                     services,
                     businessHours,
-                    aiAssistant,
-                    faqs,
                     bookingRules,
                     escalationRules,
                     escalationContact,
                 },
             });
 
-            showSavedMessage("Business settings saved successfully");
+            toast.success("Business settings saved successfully");
         } catch (error) {
             setFormError(
                 error instanceof Error
@@ -294,27 +242,6 @@ export const BusinessPage = () => {
         );
     };
 
-    const addFaq = () => {
-        if (!newFaq.question.trim() || !newFaq.answer.trim()) return;
-
-        const faq: BusinessFaq = {
-            id: `faq_${Date.now()}`,
-            question: newFaq.question.trim(),
-            answer: newFaq.answer.trim(),
-        };
-
-        setFaqs((current) => [faq, ...current]);
-
-        setNewFaq({
-            question: "",
-            answer: "",
-        });
-    };
-
-    const deleteFaq = (faqId: string) => {
-        setFaqs((current) => current.filter((faq) => faq.id !== faqId));
-    };
-
     const toggleEscalationRule = (rule: EscalationRuleKey) => {
         setEscalationRules((current) => ({
             ...current,
@@ -323,20 +250,18 @@ export const BusinessPage = () => {
     };
 
     return (
-        <div className="space-y-6 px-5 py-6 sm:px-7 lg:px-8">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold">
-                        Business Settings
-                    </h2>
-
-                    <p className="text-sm text-muted-foreground">
-                        Configure the information Atendilo uses to answer customers,
-                        quote services, book appointments, and escalate cases.
+                    <h2 className="text-2xl font-bold">Business Settings</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Configure the business data Atendilo uses for AI replies, bookings,
+                        quotes, schedules, and human handoff.
                     </p>
                 </div>
 
                 <Button
+                    type="button"
                     onClick={handleSaveAll}
                     disabled={isSaving}
                     className="bg-primary hover:bg-primary/90"
@@ -347,8 +272,8 @@ export const BusinessPage = () => {
             </div>
 
             {formError && (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
-                    <p className="text-sm text-red-400">{formError}</p>
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                    {formError}
                 </div>
             )}
 
@@ -357,7 +282,6 @@ export const BusinessPage = () => {
                 setBusinessProfile={setBusinessProfile}
                 inputClass={inputClass}
                 sectionHeader={sectionHeader}
-                showSavedMessage={showSavedMessage}
             />
 
             <ServicesPricing
@@ -376,38 +300,18 @@ export const BusinessPage = () => {
                 updateBusinessHour={updateBusinessHour}
             />
 
-            <AiAssistant
-                sectionHeader={sectionHeader}
-                aiAssistant={aiAssistant}
-                setAiAssistant={setAiAssistant}
-                inputClass={inputClass}
-                smallSelectClass={smallSelectClass}
-                showSavedMessage={showSavedMessage}
-            />
-
-            <BusinessFaqs
-                sectionHeader={sectionHeader}
-                faqs={faqs}
-                newFaq={newFaq}
-                setNewFaq={setNewFaq}
-                inputClass={inputClass}
-                addFaq={addFaq}
-                deleteFaq={deleteFaq}
-            />
-
-            <AiKnowledge
-                sectionHeader={sectionHeader}
-                inputClass={inputClass}
-                smallSelectClass={smallSelectClass}
-            />
-
             <BookingRules
                 sectionHeader={sectionHeader}
                 bookingRules={bookingRules}
                 setBookingRules={setBookingRules}
                 inputClass={inputClass}
                 smallSelectClass={smallSelectClass}
-                showSavedMessage={showSavedMessage}
+            />
+
+            <AiKnowledge
+                sectionHeader={sectionHeader}
+                inputClass={inputClass}
+                smallSelectClass={smallSelectClass}
             />
 
             <EscalationRules
@@ -417,7 +321,6 @@ export const BusinessPage = () => {
                 escalationContact={escalationContact}
                 setEscalationContact={setEscalationContact}
                 inputClass={inputClass}
-                showSavedMessage={showSavedMessage}
             />
         </div>
     );

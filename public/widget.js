@@ -23,19 +23,7 @@
     return;
   }
 
-  const state = {
-    config: null,
-    isOpen: false,
-    isLoading: false,
-    isSending: false,
-    sessionId: createSessionId(),
-    sessionVersion: 0,
-    conversationId: null,
-    conversationStatus: null,
-    messages: [],
-    visitor: null,
-    pollingInterval: null,
-  };
+  const STORAGE_KEY = `atendilo_webchat_session_${BUSINESS_ID}`;
 
   const endpoints = {
     config: `${API_BASE}/api/webchat/config/${BUSINESS_ID}`,
@@ -44,17 +32,85 @@
     end: `${API_BASE}/api/webchat/end`,
   };
 
+  function createSessionId() {
+    return typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `session_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  }
+
+  function getSavedSession() {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+
+      const parsed = JSON.parse(raw);
+
+      if (!parsed || !parsed.sessionId) {
+        sessionStorage.removeItem(STORAGE_KEY);
+        return null;
+      }
+
+      return parsed;
+    } catch {
+      sessionStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+  }
+
+  const savedSession = getSavedSession();
+
+  const state = {
+    config: null,
+    isOpen: false,
+    isLoading: false,
+    isSending: false,
+    sessionId: savedSession?.sessionId || createSessionId(),
+    sessionVersion: 0,
+    conversationId: savedSession?.conversationId || null,
+    conversationStatus: savedSession?.conversationStatus || null,
+    messages: [],
+    visitor: savedSession?.visitor || null,
+    pollingInterval: null,
+  };
+
+  function saveSession() {
+    try {
+      sessionStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          sessionId: state.sessionId,
+          conversationId: state.conversationId,
+          conversationStatus: state.conversationStatus,
+          visitor: state.visitor,
+        })
+      );
+    } catch (error) {
+      console.warn("[Atendilo Widget] Could not save session:", error);
+    }
+  }
+
+  function clearSession() {
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
+    } catch { }
+  }
+
   const styles = `
     .atendilo-widget-root {
-      all: initial;
-      position: relative;
-      z-index: 2147483646;
+      all: initial !important;
+      position: relative !important;
+      z-index: 2147483646 !important;
     }
 
     .atendilo-widget-root,
     .atendilo-widget-root * {
       box-sizing: border-box !important;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+      letter-spacing: normal !important;
+      text-transform: none !important;
+      text-shadow: none !important;
+      direction: ltr !important;
+      writing-mode: horizontal-tb !important;
     }
 
     .atendilo-widget-root button,
@@ -105,21 +161,21 @@
     }
 
     .atendilo-panel {
-  position: fixed !important;
-  right: 24px !important;
-  bottom: 100px !important;
-  width: 380px !important;
-  height: 620px !important;
-  max-height: calc(100vh - 130px) !important;
-  z-index: 2147483646 !important;
-  border-radius: 22px !important;
-  overflow: hidden !important;
-  background: #070b14 !important;
-  border: 1px solid rgba(148, 163, 184, 0.18) !important;
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55) !important;
-  display: none !important;
-  color: #f8fafc !important;
-}
+      position: fixed !important;
+      right: 24px !important;
+      bottom: 100px !important;
+      width: 380px !important;
+      height: 620px !important;
+      max-height: calc(100vh - 130px) !important;
+      z-index: 2147483646 !important;
+      border-radius: 22px !important;
+      overflow: hidden !important;
+      background: #070b14 !important;
+      border: 1px solid rgba(148, 163, 184, 0.18) !important;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55) !important;
+      display: none !important;
+      color: #f8fafc !important;
+    }
 
     .atendilo-panel.open {
       display: flex !important;
@@ -172,6 +228,7 @@
     }
 
     .atendilo-title {
+      display: block !important;
       font-size: 15px !important;
       font-weight: 800 !important;
       line-height: 1.1 !important;
@@ -181,6 +238,7 @@
     }
 
     .atendilo-subtitle {
+      display: block !important;
       margin: 3px 0 0 !important;
       padding: 0 !important;
       font-size: 12px !important;
@@ -238,12 +296,13 @@
       border: 1px solid rgba(148, 163, 184, 0.22) !important;
       background: rgba(15, 23, 42, 0.85) !important;
       color: rgba(226, 232, 240, 0.85) !important;
-      font-size: 11px !important;
+      font-size: 12px !important;
       line-height: 1 !important;
-      padding: 7px 11px !important;
+      padding: 8px 12px !important;
       border-radius: 999px !important;
       cursor: pointer !important;
       margin: 0 !important;
+      white-space: nowrap !important;
     }
 
     .atendilo-end-btn:hover {
@@ -260,6 +319,7 @@
       font-size: 12px !important;
       line-height: 1.3 !important;
       flex-shrink: 0 !important;
+      display: block !important;
     }
 
     .atendilo-chatting-as strong {
@@ -286,14 +346,17 @@
 
     .atendilo-lead-form {
       width: 100% !important;
+      max-width: 350px !important;
       border: 1px solid rgba(148, 163, 184, 0.16) !important;
       background: rgba(15, 23, 42, 0.5) !important;
       border-radius: 16px !important;
       padding: 14px !important;
       margin: 0 !important;
+      display: block !important;
     }
 
     .atendilo-lead-form h3 {
+      display: block !important;
       margin: 0 !important;
       padding: 0 !important;
       font-size: 16px !important;
@@ -303,6 +366,7 @@
     }
 
     .atendilo-lead-form p {
+      display: block !important;
       margin: 5px 0 12px !important;
       padding: 0 !important;
       font-size: 12px !important;
@@ -320,13 +384,16 @@
       outline: none !important;
       padding: 0 12px !important;
       font-size: 13px !important;
+      line-height: 40px !important;
       margin: 0 0 10px !important;
       display: block !important;
+      box-shadow: none !important;
     }
 
     .atendilo-input::placeholder,
     .atendilo-message-input::placeholder {
       color: rgba(226, 232, 240, 0.48) !important;
+      opacity: 1 !important;
     }
 
     .atendilo-input:focus,
@@ -364,6 +431,8 @@
       font-size: 13px !important;
       line-height: 1 !important;
       margin: 0 !important;
+      box-shadow: none !important;
+      text-align: center !important;
     }
 
     .atendilo-start-btn {
@@ -377,12 +446,13 @@
     }
 
     .atendilo-messages {
-  flex: 1 !important;
-  min-height: 0 !important;
-  overflow-y: auto !important;
-  padding: 16px 14px 18px !important;
-  scroll-behavior: smooth !important;
-}
+      flex: 1 !important;
+      min-height: 0 !important;
+      overflow-y: auto !important;
+      padding: 16px 14px 18px !important;
+      scroll-behavior: smooth !important;
+      display: block !important;
+    }
 
     .atendilo-messages::-webkit-scrollbar {
       width: 7px !important;
@@ -397,11 +467,14 @@
       border-radius: 999px !important;
     }
 
-    .atendilo-message {
-  display: flex !important;
-  width: 100% !important;
-  margin-bottom: 12px !important;
-}
+     .atendilo-message {
+      display: flex !important;
+      width: 100% !important;
+      margin: 0 0 12px !important;
+      padding: 0 !important;
+      align-items: flex-end !important;
+      clear: both !important;
+    }
 
     .atendilo-message.customer {
       justify-content: flex-end !important;
@@ -413,44 +486,62 @@
     }
 
     .atendilo-bubble {
-  display: inline-block !important;
-  width: auto !important;
-  max-width: 76% !important;
-  min-width: 0 !important;
-  border-radius: 16px !important;
-  padding: 11px 13px !important;
-  font-size: 13px !important;
-  line-height: 1.45 !important;
-  white-space: pre-wrap !important;
-  overflow-wrap: anywhere !important;
-  word-break: normal !important;
-  text-align: left !important;
-  margin: 0 !important;
-}
+      display: inline-flex !important;
+      flex-direction: column !important;
+      width: auto !important;
+      min-width: 0 !important;
+      max-width: 78% !important;
+      height: auto !important;
+      min-height: 0 !important;
+      border-radius: 16px !important;
+      padding: 10px 12px !important;
+      margin: 0 !important;
+      font-size: 13px !important;
+      line-height: 1.42 !important;
+      white-space: normal !important;
+      overflow-wrap: break-word !important;
+      word-break: break-word !important;
+      text-align: left !important;
+      vertical-align: top !important;
+    }
 
     .atendilo-message.customer .atendilo-bubble {
-  background: var(--atendilo-primary) !important;
-  color: white !important;
-  border-bottom-right-radius: 6px !important;
-  max-width: 68% !important;
-}
+      background: var(--atendilo-primary) !important;
+      color: white !important;
+      border-bottom-right-radius: 6px !important;
+      max-width: 70% !important;
+    }
 
     .atendilo-message.ai .atendilo-bubble,
-.atendilo-message.agent .atendilo-bubble {
-  background: #111827 !important;
-  color: #f8fafc !important;
-  border: 1px solid rgba(148, 163, 184, 0.12) !important;
-  border-bottom-left-radius: 6px !important;
-  max-width: 74% !important;
-}
+    .atendilo-message.agent .atendilo-bubble {
+      background: #111827 !important;
+      color: #f8fafc !important;
+      border: 1px solid rgba(148, 163, 184, 0.12) !important;
+      border-bottom-left-radius: 6px !important;
+      max-width: 78% !important;
+    }
 
     .atendilo-bubble-label {
       display: block !important;
       color: rgba(226, 232, 240, 0.58) !important;
       font-size: 11px !important;
       line-height: 1.2 !important;
-      margin-bottom: 5px !important;
+      margin: 0 0 5px !important;
+      padding: 0 !important;
       font-weight: 700 !important;
+      white-space: normal !important;
+    }
+
+    .atendilo-bubble-text {
+      display: block !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      color: inherit !important;
+      font-size: 13px !important;
+      line-height: 1.42 !important;
+      white-space: pre-wrap !important;
+      overflow-wrap: break-word !important;
+      word-break: break-word !important;
     }
 
     .atendilo-typing {
@@ -512,7 +603,7 @@
       border-radius: 12px !important;
       font-size: 12px !important;
       line-height: 1.35 !important;
-      display: none;
+      display: none !important;
       flex-shrink: 0 !important;
     }
 
@@ -520,44 +611,50 @@
       display: block !important;
       color: #fcd34d !important;
       font-size: 12px !important;
-      margin-bottom: 2px !important;
+      margin: 0 0 2px !important;
+      padding: 0 !important;
     }
 
     .atendilo-handoff-banner span {
       display: block !important;
       color: rgba(253, 230, 138, 0.9) !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
 
     .atendilo-composer {
-  display: flex !important;
-  gap: 8px !important;
-  padding: 12px !important;
-  border-top: 1px solid rgba(148, 163, 184, 0.14) !important;
-  background: #070b14 !important;
-  flex-shrink: 0 !important;
-  margin: 0 !important;
-}
+      display: flex !important;
+      gap: 8px !important;
+      padding: 12px !important;
+      border-top: 1px solid rgba(148, 163, 184, 0.14) !important;
+      background: #070b14 !important;
+      flex-shrink: 0 !important;
+      margin: 0 !important;
+    }
 
     .atendilo-message-input {
-  flex: 1 !important;
-  min-width: 0 !important;
-  height: 44px !important;
-  border-radius: 12px !important;
-  border: 1px solid rgba(148, 163, 184, 0.18) !important;
-  background: rgba(2, 6, 23, 0.72) !important;
-  color: #ffffff !important;
-  outline: none !important;
-  padding: 0 12px !important;
-  font-size: 13px !important;
-  margin: 0 !important;
-}
+      flex: 1 !important;
+      min-width: 0 !important;
+      width: 100% !important;
+      height: 44px !important;
+      border-radius: 12px !important;
+      border: 1px solid rgba(148, 163, 184, 0.18) !important;
+      background: rgba(2, 6, 23, 0.72) !important;
+      color: #ffffff !important;
+      outline: none !important;
+      padding: 0 12px !important;
+      font-size: 13px !important;
+      line-height: 44px !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+    }
 
     .atendilo-send-btn {
-  height: 44px !important;
-  min-width: 72px !important;
-  border-radius: 12px !important;
-  flex-shrink: 0 !important;
-}
+      height: 44px !important;
+      min-width: 72px !important;
+      border-radius: 12px !important;
+      flex-shrink: 0 !important;
+    }
 
     .atendilo-hidden {
       display: none !important;
@@ -579,12 +676,6 @@
     }
   `;
 
-  function createSessionId() {
-    return typeof crypto !== "undefined" && crypto.randomUUID
-      ? crypto.randomUUID()
-      : `session_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-  }
-
   function injectStyles(primaryColor) {
     let style = document.getElementById("atendilo-widget-styles");
 
@@ -598,7 +689,7 @@
 
     document.documentElement.style.setProperty(
       "--atendilo-primary",
-      primaryColor || "#ee82ee"
+      primaryColor || "#2563eb"
     );
   }
 
@@ -622,17 +713,18 @@
   function botIconSvg() {
     return `
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M9 3h6v2h-2v2h4a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h4V5H9V3Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M9 13h.01M15 13h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-        <path d="M9.5 17h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-        <path d="M3 12H2M22 12h-1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M12 3v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M7.2 8h9.6c1.77 0 3.2 1.43 3.2 3.2v4.1c0 1.77-1.43 3.2-3.2 3.2H7.2c-1.77 0-3.2-1.43-3.2-3.2v-4.1C4 9.43 5.43 8 7.2 8Z" stroke="currentColor" stroke-width="2"/>
+        <path d="M8.7 13h.01M15.3 13h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        <path d="M9.5 16c.7.45 1.55.7 2.5.7s1.8-.25 2.5-.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M4 12H2.5M21.5 12H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     `;
   }
 
   function renderWidgetIcon() {
     if (ICON_URL) {
-      return `<img src="${escapeAttribute(ICON_URL)}" alt="Atendilo" />`;
+      return `<img src="${escapeAttribute(ICON_URL)}" alt="Atendilo AI" />`;
     }
 
     return botIconSvg();
@@ -653,7 +745,7 @@
         ${renderWidgetIcon()}
       </button>
 
-      <section class="atendilo-panel" aria-label="Atendilo web chat">
+      <section class="atendilo-panel" aria-label="Atendilo chat">
         <header class="atendilo-header">
           <div class="atendilo-header-top">
             <div class="atendilo-avatar">
@@ -661,8 +753,8 @@
             </div>
 
             <div class="atendilo-title-area">
-              <h2 class="atendilo-title">Angela AI</h2>
-              <p class="atendilo-subtitle">Ask us anything. We usually reply instantly.</p>
+              <div class="atendilo-title">Angela AI</div>
+              <div class="atendilo-subtitle">Ask us anything. We usually reply instantly.</div>
             </div>
 
             <button class="atendilo-minimize" type="button" aria-label="Minimize chat">−</button>
@@ -681,22 +773,22 @@
         <div class="atendilo-chatting-as atendilo-hidden"></div>
 
         <main class="atendilo-body">
-          <div class="atendilo-lead-form-wrap atendilo-hidden">
+          <div class="atendilo-lead-form-wrap">
             <form class="atendilo-lead-form">
               <h3>Start your chat</h3>
               <p>Please enter your details so we can help you better.</p>
 
               <div class="atendilo-form-error"></div>
 
-              <input class="atendilo-input atendilo-name" placeholder="Name *" autocomplete="name" />
-              <input class="atendilo-input atendilo-phone" placeholder="Phone *" autocomplete="tel" />
-              <input class="atendilo-input atendilo-email" placeholder="Email *" autocomplete="email" />
+              <input class="atendilo-input atendilo-name" type="text" placeholder="Name *" autocomplete="name" />
+              <input class="atendilo-input atendilo-phone" type="tel" placeholder="Phone *" autocomplete="tel" />
+              <input class="atendilo-input atendilo-email" type="email" placeholder="Email *" autocomplete="email" />
 
               <button class="atendilo-start-btn" type="submit">Start chat</button>
             </form>
           </div>
 
-          <div class="atendilo-messages"></div>
+          <div class="atendilo-messages atendilo-hidden"></div>
 
           <div class="atendilo-typing atendilo-hidden">
             <div class="atendilo-message ai">
@@ -716,8 +808,8 @@
             <span>A human agent will join the conversation soon. You can keep sending messages here.</span>
           </div>
 
-          <form class="atendilo-composer">
-            <input class="atendilo-message-input" placeholder="Type your message..." autocomplete="off" />
+          <form class="atendilo-composer atendilo-hidden">
+            <input class="atendilo-message-input" type="text" placeholder="Type your message..." autocomplete="off" />
             <button class="atendilo-send-btn" type="submit">Send</button>
           </form>
         </main>
@@ -729,7 +821,7 @@
     return root;
   }
 
-  injectStyles("#ee82ee");
+  injectStyles("#2563eb");
 
   const root = createRoot();
 
@@ -803,6 +895,44 @@
     leadError.classList.add("show");
   }
 
+  function isClosedConversationStatus(status) {
+    const normalized = String(status || "").toLowerCase();
+
+    return [
+      "closed",
+      "ended",
+      "end",
+      "finished",
+      "resolved",
+      "archived",
+      "deleted",
+    ].includes(normalized);
+  }
+
+  function resetLocalSession() {
+    clearSession();
+
+    state.sessionVersion += 1;
+    state.messages = [];
+    state.conversationId = null;
+    state.conversationStatus = null;
+    state.visitor = null;
+    state.sessionId = createSessionId();
+    state.isSending = false;
+
+    if (nameInput) nameInput.value = "";
+    if (phoneInput) phoneInput.value = "";
+    if (emailInput) emailInput.value = "";
+    if (messageInput) messageInput.value = "";
+
+    setLeadError("");
+    hideTyping();
+    setSending(false);
+    renderHandoffBanner();
+    updateUIByLeadMode();
+    renderMessages();
+  }
+
   function getVisitorLabel() {
     if (!state.visitor) return "Customer";
 
@@ -831,12 +961,14 @@
     }
 
     const label = getVisitorLabel();
+
     chattingAs.innerHTML = `Chatting as <strong>${escapeHtml(label)}</strong>`;
     chattingAs.classList.remove("atendilo-hidden");
   }
 
   function renderHandoffBanner() {
     const shouldShow = state.conversationStatus === "pending";
+
     handoffBanner.style.display = shouldShow ? "block" : "none";
   }
 
@@ -885,7 +1017,12 @@
   }
 
   function shouldRenderWelcome() {
-    return Boolean(getWelcomeMessage()) && !shouldShowLeadForm();
+    return (
+      Boolean(getWelcomeMessage()) &&
+      !shouldShowLeadForm() &&
+      Array.isArray(state.messages) &&
+      state.messages.length === 0
+    );
   }
 
   function renderMessages() {
@@ -900,29 +1037,35 @@
     }
 
     state.messages.forEach(appendMessage);
-
     scrollToBottom();
   }
 
   function appendMessage(message) {
-    const sender = normalizeSender(message.sender_type);
-    const item = document.createElement("div");
+    if (!message || !message.content) return;
 
+    const sender = normalizeSender(message.sender_type);
+
+    const item = document.createElement("div");
     item.className = `atendilo-message ${sender}`;
 
-    const label =
-      sender === "customer"
-        ? ""
-        : `<span class="atendilo-bubble-label">${sender === "agent" ? "Agent" : getAiLabel()
-        }</span>`;
+    const bubble = document.createElement("div");
+    bubble.className = "atendilo-bubble";
 
-    item.innerHTML = `
-      <div class="atendilo-bubble">
-        ${label}
-        ${escapeHtml(message.content)}
-      </div>
-    `;
+    if (sender !== "customer") {
+      const label = document.createElement("span");
+      label.className = "atendilo-bubble-label";
+      label.textContent =
+        sender === "agent" ? "Agent" : state.config?.widgetTitle || "AI";
 
+      bubble.appendChild(label);
+    }
+
+    const text = document.createElement("span");
+    text.className = "atendilo-bubble-text";
+    text.textContent = String(message.content || "").trim();
+
+    bubble.appendChild(text);
+    item.appendChild(bubble);
     messagesEl.appendChild(item);
   }
 
@@ -949,6 +1092,7 @@
 
   function isValidEmail(email) {
     if (!email) return false;
+
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
@@ -1032,12 +1176,14 @@
       titleEl.textContent = state.config.widgetTitle;
       subtitleEl.textContent = "Ask us anything. We usually reply instantly.";
 
-      if (!state.config.captureLeads) {
+      if (!state.config.captureLeads && !state.visitor) {
         state.visitor = {
           name: "Customer",
           phone: "",
           email: "",
         };
+
+        saveSession();
       }
 
       updateUIByLeadMode();
@@ -1081,11 +1227,26 @@
         `${endpoints.messages}?${params.toString()}`
       );
 
-      if (sessionId !== state.sessionId || sessionVersion !== state.sessionVersion) {
+      if (
+        sessionId !== state.sessionId ||
+        sessionVersion !== state.sessionVersion
+      ) {
         return;
       }
 
       const data = dataResponse || {};
+
+      const newStatus =
+        data.status ||
+        data.conversationStatus ||
+        data.conversation_status ||
+        state.conversationStatus ||
+        null;
+
+      if (isClosedConversationStatus(newStatus)) {
+        resetLocalSession();
+        return;
+      }
 
       state.conversationId =
         data.conversationId ||
@@ -1093,19 +1254,18 @@
         state.conversationId ||
         null;
 
-      state.conversationStatus =
-        data.status ||
-        data.conversationStatus ||
-        data.conversation_status ||
-        state.conversationStatus ||
-        null;
+      state.conversationStatus = newStatus;
 
       state.messages = Array.isArray(data.messages) ? data.messages : [];
 
+      saveSession();
       renderMessages();
       renderHandoffBanner();
     } catch (error) {
-      if (sessionId !== state.sessionId || sessionVersion !== state.sessionVersion) {
+      if (
+        sessionId !== state.sessionId ||
+        sessionVersion !== state.sessionVersion
+      ) {
         return;
       }
 
@@ -1130,6 +1290,7 @@
     if (state.config?.captureLeads && !visitorPayload) {
       setLeadError("Please enter your name, phone, and a valid email before chatting.");
       state.visitor = null;
+      clearSession();
       updateUIByLeadMode();
       return;
     }
@@ -1164,11 +1325,26 @@
         }),
       });
 
-      if (sessionId !== state.sessionId || sessionVersion !== state.sessionVersion) {
+      if (
+        sessionId !== state.sessionId ||
+        sessionVersion !== state.sessionVersion
+      ) {
         return;
       }
 
       const data = dataResponse || {};
+
+      const newStatus =
+        data.status ||
+        data.conversationStatus ||
+        data.conversation_status ||
+        state.conversationStatus ||
+        null;
+
+      if (isClosedConversationStatus(newStatus)) {
+        resetLocalSession();
+        return;
+      }
 
       state.conversationId =
         data.conversationId ||
@@ -1176,12 +1352,9 @@
         state.conversationId ||
         null;
 
-      state.conversationStatus =
-        data.status ||
-        data.conversationStatus ||
-        data.conversation_status ||
-        state.conversationStatus ||
-        null;
+      state.conversationStatus = newStatus;
+
+      saveSession();
 
       await loadMessages();
 
@@ -1200,7 +1373,10 @@
 
       renderHandoffBanner();
     } catch (error) {
-      if (sessionId !== state.sessionId || sessionVersion !== state.sessionVersion) {
+      if (
+        sessionId !== state.sessionId ||
+        sessionVersion !== state.sessionVersion
+      ) {
         return;
       }
 
@@ -1211,14 +1387,16 @@
       state.messages.push({
         id: `error_${Date.now()}`,
         sender_type: "ai",
-        content:
-          "Sorry, something went wrong while sending your message. Please try again.",
+        content: "Sorry, something went wrong while sending your message. Please try again.",
         created_at: new Date().toISOString(),
       });
 
       renderMessages();
     } finally {
-      if (sessionId === state.sessionId && sessionVersion === state.sessionVersion) {
+      if (
+        sessionId === state.sessionId &&
+        sessionVersion === state.sessionVersion
+      ) {
         hideTyping();
         setSending(false);
         messageInput.focus();
@@ -1230,6 +1408,7 @@
     const oldSessionId = state.sessionId;
 
     stopPolling();
+    clearSession();
 
     state.sessionVersion += 1;
     state.messages = [];
@@ -1243,6 +1422,7 @@
     phoneInput.value = "";
     emailInput.value = "";
     messageInput.value = "";
+
     setLeadError("");
     hideTyping();
     setSending(false);
@@ -1297,7 +1477,6 @@
   });
 
   minimizeBtn.addEventListener("click", minimizePanel);
-
   endBtn.addEventListener("click", endChat);
 
   leadForm.addEventListener("submit", async (event) => {
@@ -1339,6 +1518,7 @@
       email,
     };
 
+    saveSession();
     updateUIByLeadMode();
     renderMessages();
     startPolling();

@@ -27,7 +27,7 @@ export const BusinessProfile = ({
                 {sectionHeader(
                     <BriefcaseBusiness className="h-5 w-5" />,
                     "General Information",
-                    "Basic business details used by Atendilo AI when speaking with customers."
+                    "Basic business information used by Atendilo to understand your company and answer customers correctly."
                 )}
             </div>
 
