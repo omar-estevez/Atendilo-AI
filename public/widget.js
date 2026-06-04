@@ -13,6 +13,11 @@
     window.ATENDILO_BUSINESS_ID ||
     "";
 
+  const ICON_URL =
+    currentScript?.dataset.iconUrl ||
+    currentScript?.getAttribute("data-icon-url") ||
+    "";
+
   if (!BUSINESS_ID) {
     console.error("[Atendilo Widget] Missing business id.");
     return;
@@ -21,12 +26,10 @@
   const state = {
     config: null,
     isOpen: false,
-    isMinimized: false,
     isLoading: false,
     isSending: false,
-    sessionId: crypto.randomUUID
-      ? crypto.randomUUID()
-      : `session_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+    sessionId: createSessionId(),
+    sessionVersion: 0,
     conversationId: null,
     conversationStatus: null,
     messages: [],
@@ -42,388 +45,519 @@
   };
 
   const styles = `
+    .atendilo-widget-root {
+      all: initial;
+      position: relative;
+      z-index: 2147483646;
+    }
+
     .atendilo-widget-root,
     .atendilo-widget-root * {
-      box-sizing: border-box;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      box-sizing: border-box !important;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    }
+
+    .atendilo-widget-root button,
+    .atendilo-widget-root input,
+    .atendilo-widget-root form {
+      font: inherit !important;
     }
 
     .atendilo-launcher {
-      position: fixed;
-      right: 24px;
-      bottom: 24px;
-      width: 64px;
-      height: 64px;
-      border-radius: 999px;
-      border: 0;
-      cursor: pointer;
-      z-index: 2147483646;
-      background: linear-gradient(135deg, var(--atendilo-primary), #2563eb);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 180ms ease, box-shadow 180ms ease;
+      position: fixed !important;
+      right: 24px !important;
+      bottom: 24px !important;
+      width: 64px !important;
+      height: 64px !important;
+      border-radius: 999px !important;
+      border: 0 !important;
+      cursor: pointer !important;
+      z-index: 2147483646 !important;
+      background: linear-gradient(135deg, var(--atendilo-primary), #2563eb) !important;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      transition: transform 180ms ease, box-shadow 180ms ease !important;
+      padding: 0 !important;
+      margin: 0 !important;
     }
 
     .atendilo-launcher:hover {
-      transform: translateY(-2px) scale(1.03);
-      box-shadow: 0 26px 60px rgba(0, 0, 0, 0.45);
+      transform: translateY(-2px) scale(1.03) !important;
+      box-shadow: 0 26px 60px rgba(0, 0, 0, 0.45) !important;
     }
 
     .atendilo-launcher img {
-      width: 34px;
-      height: 34px;
-      object-fit: contain;
+      width: 34px !important;
+      height: 34px !important;
+      max-width: 34px !important;
+      max-height: 34px !important;
+      object-fit: contain !important;
+      display: block !important;
     }
 
     .atendilo-launcher svg {
-      width: 31px;
-      height: 31px;
-      color: white;
+      width: 31px !important;
+      height: 31px !important;
+      color: white !important;
+      display: block !important;
     }
 
     .atendilo-panel {
-      position: fixed;
-      right: 24px;
-      bottom: 100px;
-      width: 370px;
-      height: 620px;
-      max-height: calc(100vh - 130px);
-      z-index: 2147483646;
-      border-radius: 22px;
-      overflow: hidden;
-      background: #070b14;
-      border: 1px solid rgba(148, 163, 184, 0.18);
-      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
-      display: none;
-      color: #f8fafc;
-    }
+  position: fixed !important;
+  right: 24px !important;
+  bottom: 100px !important;
+  width: 380px !important;
+  height: 620px !important;
+  max-height: calc(100vh - 130px) !important;
+  z-index: 2147483646 !important;
+  border-radius: 22px !important;
+  overflow: hidden !important;
+  background: #070b14 !important;
+  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55) !important;
+  display: none !important;
+  color: #f8fafc !important;
+}
 
     .atendilo-panel.open {
-      display: flex;
-      flex-direction: column;
+      display: flex !important;
+      flex-direction: column !important;
     }
 
     .atendilo-header {
-      padding: 14px 16px;
-      background: #090e19;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+      padding: 14px 16px !important;
+      background: #090e19 !important;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
+      flex-shrink: 0 !important;
     }
 
     .atendilo-header-top {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+      display: flex !important;
+      align-items: center !important;
+      gap: 12px !important;
     }
 
     .atendilo-avatar {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      background: rgba(56, 189, 248, 0.12);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
+      width: 42px !important;
+      height: 42px !important;
+      border-radius: 12px !important;
+      background: rgba(56, 189, 248, 0.12) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      flex-shrink: 0 !important;
     }
 
     .atendilo-avatar svg {
-      width: 24px;
-      height: 24px;
-      color: var(--atendilo-primary);
+      width: 24px !important;
+      height: 24px !important;
+      color: var(--atendilo-primary) !important;
+      display: block !important;
+    }
+
+    .atendilo-avatar img {
+      width: 24px !important;
+      height: 24px !important;
+      max-width: 24px !important;
+      max-height: 24px !important;
+      object-fit: contain !important;
+      display: block !important;
     }
 
     .atendilo-title-area {
-      min-width: 0;
-      flex: 1;
+      min-width: 0 !important;
+      flex: 1 !important;
     }
 
     .atendilo-title {
-      font-size: 15px;
-      font-weight: 800;
-      line-height: 1.1;
-      color: #ffffff;
-      margin: 0;
+      font-size: 15px !important;
+      font-weight: 800 !important;
+      line-height: 1.1 !important;
+      color: #ffffff !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
 
     .atendilo-subtitle {
-      margin: 3px 0 0;
-      font-size: 12px;
-      color: rgba(226, 232, 240, 0.7);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      margin: 3px 0 0 !important;
+      padding: 0 !important;
+      font-size: 12px !important;
+      line-height: 1.3 !important;
+      color: rgba(226, 232, 240, 0.7) !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
     }
 
     .atendilo-minimize {
-      width: 30px;
-      height: 30px;
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.18);
-      background: rgba(15, 23, 42, 0.8);
-      color: rgba(226, 232, 240, 0.8);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      line-height: 1;
+      width: 30px !important;
+      height: 30px !important;
+      border-radius: 999px !important;
+      border: 1px solid rgba(148, 163, 184, 0.18) !important;
+      background: rgba(15, 23, 42, 0.8) !important;
+      color: rgba(226, 232, 240, 0.8) !important;
+      cursor: pointer !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      font-size: 18px !important;
+      line-height: 1 !important;
+      padding: 0 !important;
+      margin: 0 !important;
     }
 
     .atendilo-status-row {
-      margin-top: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
+      margin-top: 12px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 8px !important;
     }
 
     .atendilo-online {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: rgba(226, 232, 240, 0.8);
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      font-size: 12px !important;
+      color: rgba(226, 232, 240, 0.8) !important;
+      line-height: 1 !important;
     }
 
     .atendilo-online-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: #22c55e;
-      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1);
+      width: 8px !important;
+      height: 8px !important;
+      border-radius: 999px !important;
+      background: #22c55e !important;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1) !important;
+      flex-shrink: 0 !important;
     }
 
     .atendilo-end-btn {
-      border: 1px solid rgba(148, 163, 184, 0.22);
-      background: rgba(15, 23, 42, 0.85);
-      color: rgba(226, 232, 240, 0.85);
-      font-size: 11px;
-      padding: 6px 11px;
-      border-radius: 999px;
-      cursor: pointer;
+      border: 1px solid rgba(148, 163, 184, 0.22) !important;
+      background: rgba(15, 23, 42, 0.85) !important;
+      color: rgba(226, 232, 240, 0.85) !important;
+      font-size: 11px !important;
+      line-height: 1 !important;
+      padding: 7px 11px !important;
+      border-radius: 999px !important;
+      cursor: pointer !important;
+      margin: 0 !important;
     }
 
     .atendilo-end-btn:hover {
-      border-color: rgba(248, 113, 113, 0.45);
-      color: #fecaca;
-      background: rgba(127, 29, 29, 0.25);
+      border-color: rgba(248, 113, 113, 0.45) !important;
+      color: #fecaca !important;
+      background: rgba(127, 29, 29, 0.25) !important;
     }
 
     .atendilo-chatting-as {
-      padding: 8px 14px;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
-      background: rgba(2, 6, 23, 0.8);
-      color: rgba(226, 232, 240, 0.82);
-      font-size: 12px;
+      padding: 8px 14px !important;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
+      background: rgba(2, 6, 23, 0.8) !important;
+      color: rgba(226, 232, 240, 0.82) !important;
+      font-size: 12px !important;
+      line-height: 1.3 !important;
+      flex-shrink: 0 !important;
     }
 
     .atendilo-chatting-as strong {
-      color: #ffffff;
-      font-weight: 800;
+      color: #ffffff !important;
+      font-weight: 800 !important;
     }
 
     .atendilo-body {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      background: #060a12;
+      flex: 1 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      min-height: 0 !important;
+      background: #060a12 !important;
     }
 
     .atendilo-lead-form-wrap {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      padding: 20px 14px;
+      flex: 1 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 20px 14px !important;
+      min-height: 0 !important;
     }
 
     .atendilo-lead-form {
-      width: 100%;
-      border: 1px solid rgba(148, 163, 184, 0.16);
-      background: rgba(15, 23, 42, 0.5);
-      border-radius: 16px;
-      padding: 14px;
+      width: 100% !important;
+      border: 1px solid rgba(148, 163, 184, 0.16) !important;
+      background: rgba(15, 23, 42, 0.5) !important;
+      border-radius: 16px !important;
+      padding: 14px !important;
+      margin: 0 !important;
     }
 
     .atendilo-lead-form h3 {
-      margin: 0;
-      font-size: 16px;
-      color: #ffffff;
+      margin: 0 !important;
+      padding: 0 !important;
+      font-size: 16px !important;
+      line-height: 1.2 !important;
+      color: #ffffff !important;
+      font-weight: 800 !important;
     }
 
     .atendilo-lead-form p {
-      margin: 5px 0 12px;
-      font-size: 12px;
-      color: rgba(226, 232, 240, 0.68);
+      margin: 5px 0 12px !important;
+      padding: 0 !important;
+      font-size: 12px !important;
+      line-height: 1.4 !important;
+      color: rgba(226, 232, 240, 0.68) !important;
     }
 
     .atendilo-input {
-      width: 100%;
-      height: 38px;
-      border-radius: 10px;
-      border: 1px solid rgba(148, 163, 184, 0.14);
-      background: rgba(2, 6, 23, 0.7);
-      color: #ffffff;
-      outline: none;
-      padding: 0 10px;
-      font-size: 13px;
-      margin-bottom: 8px;
+      width: 100% !important;
+      height: 40px !important;
+      border-radius: 12px !important;
+      border: 1px solid rgba(148, 163, 184, 0.18) !important;
+      background: rgba(2, 6, 23, 0.75) !important;
+      color: #ffffff !important;
+      outline: none !important;
+      padding: 0 12px !important;
+      font-size: 13px !important;
+      margin: 0 0 10px !important;
+      display: block !important;
+    }
+
+    .atendilo-input::placeholder,
+    .atendilo-message-input::placeholder {
+      color: rgba(226, 232, 240, 0.48) !important;
     }
 
     .atendilo-input:focus,
     .atendilo-message-input:focus {
-      border-color: var(--atendilo-primary);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--atendilo-primary) 20%, transparent);
+      border-color: var(--atendilo-primary) !important;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--atendilo-primary) 20%, transparent) !important;
+    }
+
+    .atendilo-form-error {
+      display: none !important;
+      margin: 0 0 10px !important;
+      padding: 8px 10px !important;
+      border-radius: 10px !important;
+      background: rgba(239, 68, 68, 0.12) !important;
+      border: 1px solid rgba(239, 68, 68, 0.25) !important;
+      color: #fecaca !important;
+      font-size: 12px !important;
+      line-height: 1.35 !important;
+    }
+
+    .atendilo-form-error.show {
+      display: block !important;
     }
 
     .atendilo-start-btn,
     .atendilo-send-btn {
-      border: 0;
-      cursor: pointer;
-      background: var(--atendilo-primary);
-      color: white;
-      font-weight: 800;
-      border-radius: 10px;
-      height: 40px;
-      padding: 0 14px;
-      font-size: 13px;
+      border: 0 !important;
+      cursor: pointer !important;
+      background: var(--atendilo-primary) !important;
+      color: white !important;
+      font-weight: 800 !important;
+      border-radius: 10px !important;
+      height: 40px !important;
+      padding: 0 14px !important;
+      font-size: 13px !important;
+      line-height: 1 !important;
+      margin: 0 !important;
     }
 
     .atendilo-start-btn {
-      width: 100%;
+      width: 100% !important;
     }
 
     .atendilo-start-btn:disabled,
     .atendilo-send-btn:disabled {
-      opacity: 0.65;
-      cursor: not-allowed;
+      opacity: 0.65 !important;
+      cursor: not-allowed !important;
     }
 
     .atendilo-messages {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      padding: 14px;
-      scroll-behavior: smooth;
-    }
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  padding: 16px 14px 18px !important;
+  scroll-behavior: smooth !important;
+}
 
     .atendilo-messages::-webkit-scrollbar {
-      width: 7px;
+      width: 7px !important;
     }
 
     .atendilo-messages::-webkit-scrollbar-track {
-      background: rgba(15, 23, 42, 0.4);
+      background: rgba(15, 23, 42, 0.4) !important;
     }
 
     .atendilo-messages::-webkit-scrollbar-thumb {
-      background: var(--atendilo-primary);
-      border-radius: 999px;
+      background: var(--atendilo-primary) !important;
+      border-radius: 999px !important;
     }
 
     .atendilo-message {
-      display: flex;
-      margin-bottom: 12px;
-    }
+  display: flex !important;
+  width: 100% !important;
+  margin-bottom: 12px !important;
+}
 
     .atendilo-message.customer {
-      justify-content: flex-end;
+      justify-content: flex-end !important;
     }
 
     .atendilo-message.ai,
     .atendilo-message.agent {
-      justify-content: flex-start;
+      justify-content: flex-start !important;
     }
 
     .atendilo-bubble {
-      max-width: 82%;
-      border-radius: 16px;
-      padding: 10px 12px;
-      font-size: 13px;
-      line-height: 1.42;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
+  display: inline-block !important;
+  width: auto !important;
+  max-width: 76% !important;
+  min-width: 0 !important;
+  border-radius: 16px !important;
+  padding: 11px 13px !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+  text-align: left !important;
+  margin: 0 !important;
+}
 
     .atendilo-message.customer .atendilo-bubble {
-      background: var(--atendilo-primary);
-      color: white;
-      border-bottom-right-radius: 6px;
-    }
+  background: var(--atendilo-primary) !important;
+  color: white !important;
+  border-bottom-right-radius: 6px !important;
+  max-width: 68% !important;
+}
 
     .atendilo-message.ai .atendilo-bubble,
-    .atendilo-message.agent .atendilo-bubble {
-      background: #111827;
-      color: #f8fafc;
-      border: 1px solid rgba(148, 163, 184, 0.12);
-      border-bottom-left-radius: 6px;
-    }
+.atendilo-message.agent .atendilo-bubble {
+  background: #111827 !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(148, 163, 184, 0.12) !important;
+  border-bottom-left-radius: 6px !important;
+  max-width: 74% !important;
+}
 
     .atendilo-bubble-label {
-      display: block;
-      color: rgba(226, 232, 240, 0.58);
-      font-size: 11px;
-      margin-bottom: 5px;
-      font-weight: 700;
+      display: block !important;
+      color: rgba(226, 232, 240, 0.58) !important;
+      font-size: 11px !important;
+      line-height: 1.2 !important;
+      margin-bottom: 5px !important;
+      font-weight: 700 !important;
+    }
+
+    .atendilo-typing {
+      padding: 0 14px !important;
+      flex-shrink: 0 !important;
+    }
+
+    .atendilo-typing .atendilo-message {
+      margin-bottom: 12px !important;
+    }
+
+    .atendilo-typing-bubble {
+      width: fit-content !important;
+      max-width: 150px !important;
+      min-width: 112px !important;
+    }
+
+    .atendilo-typing-dots {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 4px !important;
+      height: 14px !important;
+    }
+
+    .atendilo-typing-dots span {
+      width: 6px !important;
+      height: 6px !important;
+      border-radius: 999px !important;
+      background: rgba(226, 232, 240, 0.75) !important;
+      animation: atendiloTyping 1s infinite ease-in-out !important;
+    }
+
+    .atendilo-typing-dots span:nth-child(2) {
+      animation-delay: 0.15s !important;
+    }
+
+    .atendilo-typing-dots span:nth-child(3) {
+      animation-delay: 0.3s !important;
+    }
+
+    @keyframes atendiloTyping {
+      0%, 80%, 100% {
+        opacity: 0.35;
+        transform: translateY(0);
+      }
+
+      40% {
+        opacity: 1;
+        transform: translateY(-3px);
+      }
     }
 
     .atendilo-handoff-banner {
-      margin: 8px 12px;
-      padding: 10px 12px;
-      border: 1px solid rgba(245, 158, 11, 0.35);
-      background: rgba(245, 158, 11, 0.12);
-      color: #fbbf24;
-      border-radius: 12px;
-      font-size: 12px;
-      line-height: 1.35;
+      margin: 8px 12px !important;
+      padding: 10px 12px !important;
+      border: 1px solid rgba(245, 158, 11, 0.35) !important;
+      background: rgba(245, 158, 11, 0.12) !important;
+      color: #fbbf24 !important;
+      border-radius: 12px !important;
+      font-size: 12px !important;
+      line-height: 1.35 !important;
       display: none;
+      flex-shrink: 0 !important;
     }
 
     .atendilo-handoff-banner strong {
-      display: block;
-      color: #fcd34d;
-      font-size: 12px;
-      margin-bottom: 2px;
+      display: block !important;
+      color: #fcd34d !important;
+      font-size: 12px !important;
+      margin-bottom: 2px !important;
     }
 
     .atendilo-handoff-banner span {
-      display: block;
-      color: rgba(253, 230, 138, 0.9);
+      display: block !important;
+      color: rgba(253, 230, 138, 0.9) !important;
     }
 
     .atendilo-composer {
-      display: flex;
-      gap: 8px;
-      padding: 10px 12px 12px;
-      border-top: 1px solid rgba(148, 163, 184, 0.14);
-      background: #070b14;
-    }
+  display: flex !important;
+  gap: 8px !important;
+  padding: 12px !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.14) !important;
+  background: #070b14 !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+}
 
     .atendilo-message-input {
-      flex: 1;
-      min-width: 0;
-      height: 44px;
-      border-radius: 12px;
-      border: 1px solid rgba(148, 163, 184, 0.18);
-      background: rgba(2, 6, 23, 0.72);
-      color: #ffffff;
-      outline: none;
-      padding: 0 12px;
-      font-size: 13px;
-    }
+  flex: 1 !important;
+  min-width: 0 !important;
+  height: 44px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  background: rgba(2, 6, 23, 0.72) !important;
+  color: #ffffff !important;
+  outline: none !important;
+  padding: 0 12px !important;
+  font-size: 13px !important;
+  margin: 0 !important;
+}
 
     .atendilo-send-btn {
-      height: 44px;
-      min-width: 72px;
-      border-radius: 12px;
-    }
-
-    .atendilo-loading {
-      padding: 10px 14px;
-      color: rgba(226, 232, 240, 0.58);
-      font-size: 12px;
-    }
+  height: 44px !important;
+  min-width: 72px !important;
+  border-radius: 12px !important;
+  flex-shrink: 0 !important;
+}
 
     .atendilo-hidden {
       display: none !important;
@@ -431,32 +565,58 @@
 
     @media (max-width: 520px) {
       .atendilo-panel {
-        right: 10px;
-        left: 10px;
-        bottom: 86px;
-        width: auto;
-        height: min(620px, calc(100vh - 110px));
+        right: 10px !important;
+        left: 10px !important;
+        bottom: 86px !important;
+        width: auto !important;
+        height: min(620px, calc(100vh - 110px)) !important;
       }
 
       .atendilo-launcher {
-        right: 18px;
-        bottom: 18px;
+        right: 18px !important;
+        bottom: 18px !important;
       }
     }
   `;
 
-  function injectStyles(primaryColor) {
-    if (document.getElementById("atendilo-widget-styles")) return;
+  function createSessionId() {
+    return typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `session_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  }
 
-    const style = document.createElement("style");
-    style.id = "atendilo-widget-styles";
+  function injectStyles(primaryColor) {
+    let style = document.getElementById("atendilo-widget-styles");
+
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "atendilo-widget-styles";
+      document.head.appendChild(style);
+    }
+
     style.textContent = styles;
 
-    document.head.appendChild(style);
     document.documentElement.style.setProperty(
       "--atendilo-primary",
       primaryColor || "#ee82ee"
     );
+  }
+
+  function escapeAttribute(value) {
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
   }
 
   function botIconSvg() {
@@ -470,19 +630,34 @@
     `;
   }
 
+  function renderWidgetIcon() {
+    if (ICON_URL) {
+      return `<img src="${escapeAttribute(ICON_URL)}" alt="Atendilo" />`;
+    }
+
+    return botIconSvg();
+  }
+
   function createRoot() {
+    const existingRoot = document.querySelector(".atendilo-widget-root");
+
+    if (existingRoot) {
+      existingRoot.remove();
+    }
+
     const root = document.createElement("div");
     root.className = "atendilo-widget-root";
+
     root.innerHTML = `
       <button class="atendilo-launcher" type="button" aria-label="Open chat">
-        ${botIconSvg()}
+        ${renderWidgetIcon()}
       </button>
 
       <section class="atendilo-panel" aria-label="Atendilo web chat">
         <header class="atendilo-header">
           <div class="atendilo-header-top">
             <div class="atendilo-avatar">
-              ${botIconSvg()}
+              ${renderWidgetIcon()}
             </div>
 
             <div class="atendilo-title-area">
@@ -511,15 +686,30 @@
               <h3>Start your chat</h3>
               <p>Please enter your details so we can help you better.</p>
 
+              <div class="atendilo-form-error"></div>
+
               <input class="atendilo-input atendilo-name" placeholder="Name *" autocomplete="name" />
               <input class="atendilo-input atendilo-phone" placeholder="Phone *" autocomplete="tel" />
-              <input class="atendilo-input atendilo-email" placeholder="Email" autocomplete="email" />
+              <input class="atendilo-input atendilo-email" placeholder="Email *" autocomplete="email" />
 
               <button class="atendilo-start-btn" type="submit">Start chat</button>
             </form>
           </div>
 
           <div class="atendilo-messages"></div>
+
+          <div class="atendilo-typing atendilo-hidden">
+            <div class="atendilo-message ai">
+              <div class="atendilo-bubble atendilo-typing-bubble">
+                <span class="atendilo-bubble-label">Angela AI</span>
+                <span class="atendilo-typing-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </span>
+              </div>
+            </div>
+          </div>
 
           <div class="atendilo-handoff-banner">
             <strong>Human agent requested</strong>
@@ -535,8 +725,11 @@
     `;
 
     document.body.appendChild(root);
+
     return root;
   }
+
+  injectStyles("#ee82ee");
 
   const root = createRoot();
 
@@ -551,10 +744,12 @@
   const chattingAs = $(".atendilo-chatting-as");
   const leadWrap = $(".atendilo-lead-form-wrap");
   const leadForm = $(".atendilo-lead-form");
+  const leadError = $(".atendilo-form-error");
   const nameInput = $(".atendilo-name");
   const phoneInput = $(".atendilo-phone");
   const emailInput = $(".atendilo-email");
   const messagesEl = $(".atendilo-messages");
+  const typingEl = $(".atendilo-typing");
   const composer = $(".atendilo-composer");
   const messageInput = $(".atendilo-message-input");
   const sendBtn = $(".atendilo-send-btn");
@@ -563,7 +758,15 @@
   function showPanel() {
     state.isOpen = true;
     panel.classList.add("open");
-    setTimeout(() => messageInput?.focus(), 80);
+
+    setTimeout(() => {
+      if (shouldShowLeadForm()) {
+        nameInput?.focus();
+      } else {
+        messageInput?.focus();
+      }
+    }, 80);
+
     startPolling();
   }
 
@@ -587,6 +790,19 @@
     messageInput.disabled = value;
   }
 
+  function setLeadError(message) {
+    if (!leadError) return;
+
+    if (!message) {
+      leadError.textContent = "";
+      leadError.classList.remove("show");
+      return;
+    }
+
+    leadError.textContent = message;
+    leadError.classList.add("show");
+  }
+
   function getVisitorLabel() {
     if (!state.visitor) return "Customer";
 
@@ -603,7 +819,17 @@
     return "Customer";
   }
 
+  function getAiLabel() {
+    return escapeHtml(state.config?.widgetTitle || "AI");
+  }
+
   function renderChattingAs() {
+    if (shouldShowLeadForm()) {
+      chattingAs.innerHTML = "";
+      chattingAs.classList.add("atendilo-hidden");
+      return;
+    }
+
     const label = getVisitorLabel();
     chattingAs.innerHTML = `Chatting as <strong>${escapeHtml(label)}</strong>`;
     chattingAs.classList.remove("atendilo-hidden");
@@ -625,22 +851,21 @@
     messagesEl.classList.toggle("atendilo-hidden", showLeadForm);
     composer.classList.toggle("atendilo-hidden", showLeadForm);
 
+    hideTyping();
+    renderChattingAs();
+
     if (!showLeadForm) {
-      renderChattingAs();
+      renderMessages();
+      setTimeout(() => messageInput?.focus(), 80);
     }
   }
 
-  function escapeHtml(value) {
-    return String(value || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
   function normalizeSender(senderType) {
-    if (senderType === "contact" || senderType === "customer" || senderType === "user") {
+    if (
+      senderType === "contact" ||
+      senderType === "customer" ||
+      senderType === "user"
+    ) {
       return "customer";
     }
 
@@ -651,16 +876,27 @@
     return "ai";
   }
 
+  function getWelcomeMessage() {
+    return (
+      state.config?.welcomeMessage ||
+      state.config?.welcome_message ||
+      "Hi! Welcome to my business. How can I help you today?"
+    );
+  }
+
+  function shouldRenderWelcome() {
+    return Boolean(getWelcomeMessage()) && !shouldShowLeadForm();
+  }
+
   function renderMessages() {
     messagesEl.innerHTML = "";
 
-    if (!state.messages.length && state.config?.welcomeMessage) {
+    if (shouldRenderWelcome()) {
       appendMessage({
         sender_type: "ai",
-        content: state.config.welcomeMessage,
+        content: getWelcomeMessage(),
         synthetic: true,
       });
-      return;
     }
 
     state.messages.forEach(appendMessage);
@@ -671,12 +907,14 @@
   function appendMessage(message) {
     const sender = normalizeSender(message.sender_type);
     const item = document.createElement("div");
+
     item.className = `atendilo-message ${sender}`;
 
     const label =
       sender === "customer"
         ? ""
-        : `<span class="atendilo-bubble-label">${sender === "agent" ? "Agent" : escapeHtml(state.config?.widgetTitle || "AI")}</span>`;
+        : `<span class="atendilo-bubble-label">${sender === "agent" ? "Agent" : getAiLabel()
+        }</span>`;
 
     item.innerHTML = `
       <div class="atendilo-bubble">
@@ -694,6 +932,44 @@
     });
   }
 
+  function showTyping() {
+    const labelEl = typingEl?.querySelector(".atendilo-bubble-label");
+
+    if (labelEl) {
+      labelEl.textContent = state.config?.widgetTitle || "AI";
+    }
+
+    typingEl?.classList.remove("atendilo-hidden");
+    scrollToBottom();
+  }
+
+  function hideTyping() {
+    typingEl?.classList.add("atendilo-hidden");
+  }
+
+  function isValidEmail(email) {
+    if (!email) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function getCleanVisitorPayload() {
+    if (!state.visitor) return null;
+
+    const name = String(state.visitor.name || "").trim();
+    const phone = String(state.visitor.phone || "").trim();
+    const email = String(state.visitor.email || "").trim();
+
+    if (!name || !phone || !email || !isValidEmail(email)) {
+      return null;
+    }
+
+    return {
+      name,
+      phone,
+      email,
+    };
+  }
+
   async function fetchJson(url, options) {
     const response = await fetch(url, {
       headers: {
@@ -702,7 +978,17 @@
       ...options,
     });
 
-    const data = await response.json().catch(() => null);
+    const text = await response.text();
+
+    let data = null;
+
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      throw new Error(
+        `Invalid JSON response from ${url}. Check API_BASE / data-api-base.`
+      );
+    }
 
     if (!response.ok) {
       throw new Error(data?.message || data?.error || "Request failed");
@@ -715,19 +1001,30 @@
     setLoading(true);
 
     try {
-      const config = await fetchJson(endpoints.config);
+      const configResponse = await fetchJson(endpoints.config);
+      const config = configResponse || {};
 
       state.config = {
-        businessId: config.businessId || BUSINESS_ID,
-        channelId: config.channelId || null,
+        businessId: config.businessId || config.business_id || BUSINESS_ID,
+        channelId: config.channelId || config.channel_id || null,
         status: config.status || "inactive",
-        widgetTitle: config.widgetTitle || "Angela AI",
+        widgetTitle:
+          config.widgetTitle ||
+          config.widget_title ||
+          config.aiName ||
+          config.ai_name ||
+          "Angela AI",
         welcomeMessage:
           config.welcomeMessage ||
-          `Hi! Welcome to my business. How can I help you today?`,
-        primaryColor: config.primaryColor || "#ee82ee",
+          config.welcome_message ||
+          "Hi! Welcome to my business. How can I help you today?",
+        primaryColor: config.primaryColor || config.primary_color || "#ee82ee",
         captureLeads:
-          typeof config.captureLeads === "boolean" ? config.captureLeads : true,
+          typeof config.captureLeads === "boolean"
+            ? config.captureLeads
+            : typeof config.capture_leads === "boolean"
+              ? config.capture_leads
+              : true,
       };
 
       injectStyles(state.config.primaryColor);
@@ -736,43 +1033,109 @@
       subtitleEl.textContent = "Ask us anything. We usually reply instantly.";
 
       if (!state.config.captureLeads) {
-        state.visitor = null;
+        state.visitor = {
+          name: "Customer",
+          phone: "",
+          email: "",
+        };
       }
 
       updateUIByLeadMode();
       await loadMessages();
     } catch (error) {
       console.error("[Atendilo Widget] Config error:", error);
-      injectStyles("#ee82ee");
+
+      state.config = {
+        businessId: BUSINESS_ID,
+        channelId: null,
+        status: "active",
+        widgetTitle: "Angela AI",
+        welcomeMessage: "Hi! Welcome to my business. How can I help you today?",
+        primaryColor: "#ee82ee",
+        captureLeads: true,
+      };
+
+      injectStyles(state.config.primaryColor);
+
+      titleEl.textContent = state.config.widgetTitle;
+      subtitleEl.textContent = "Ask us anything. We usually reply instantly.";
+
       updateUIByLeadMode();
+      await loadMessages();
     } finally {
       setLoading(false);
     }
   }
 
   async function loadMessages() {
+    const sessionId = state.sessionId;
+    const sessionVersion = state.sessionVersion;
+
     try {
       const params = new URLSearchParams({
         businessId: BUSINESS_ID,
-        sessionId: state.sessionId,
+        sessionId,
       });
 
-      const data = await fetchJson(`${endpoints.messages}?${params.toString()}`);
+      const dataResponse = await fetchJson(
+        `${endpoints.messages}?${params.toString()}`
+      );
 
-      state.conversationId = data.conversationId || state.conversationId;
-      state.conversationStatus = data.status || state.conversationStatus;
+      if (sessionId !== state.sessionId || sessionVersion !== state.sessionVersion) {
+        return;
+      }
+
+      const data = dataResponse || {};
+
+      state.conversationId =
+        data.conversationId ||
+        data.conversation_id ||
+        state.conversationId ||
+        null;
+
+      state.conversationStatus =
+        data.status ||
+        data.conversationStatus ||
+        data.conversation_status ||
+        state.conversationStatus ||
+        null;
+
       state.messages = Array.isArray(data.messages) ? data.messages : [];
 
       renderMessages();
       renderHandoffBanner();
     } catch (error) {
+      if (sessionId !== state.sessionId || sessionVersion !== state.sessionVersion) {
+        return;
+      }
+
       console.error("[Atendilo Widget] Load messages error:", error);
+
+      state.conversationId = state.conversationId || null;
+      state.conversationStatus = state.conversationStatus || null;
+      state.messages = Array.isArray(state.messages) ? state.messages : [];
+
+      renderMessages();
+      renderHandoffBanner();
     }
   }
 
   async function sendMessage(content) {
     const text = String(content || "").trim();
+
     if (!text || state.isSending) return;
+
+    const visitorPayload = getCleanVisitorPayload();
+
+    if (state.config?.captureLeads && !visitorPayload) {
+      setLeadError("Please enter your name, phone, and a valid email before chatting.");
+      state.visitor = null;
+      updateUIByLeadMode();
+      return;
+    }
+
+    const sessionId = state.sessionId;
+    const sessionVersion = state.sessionVersion;
 
     setSending(true);
 
@@ -787,23 +1150,42 @@
     renderMessages();
 
     messageInput.value = "";
+    showTyping();
 
     try {
-      const data = await fetchJson(endpoints.send, {
+      const dataResponse = await fetchJson(endpoints.send, {
         method: "POST",
         body: JSON.stringify({
           businessId: BUSINESS_ID,
-          sessionId: state.sessionId,
+          sessionId,
           message: text,
-          visitor: state.visitor,
+          visitor: visitorPayload,
           clientMessageId: optimisticMessage.id,
         }),
       });
 
-      state.conversationId = data.conversationId || state.conversationId;
-      state.conversationStatus = data.status || state.conversationStatus;
+      if (sessionId !== state.sessionId || sessionVersion !== state.sessionVersion) {
+        return;
+      }
+
+      const data = dataResponse || {};
+
+      state.conversationId =
+        data.conversationId ||
+        data.conversation_id ||
+        state.conversationId ||
+        null;
+
+      state.conversationStatus =
+        data.status ||
+        data.conversationStatus ||
+        data.conversation_status ||
+        state.conversationStatus ||
+        null;
 
       await loadMessages();
+
+      hideTyping();
 
       if (data.reply && !state.messages.some((m) => m.content === data.reply)) {
         state.messages.push({
@@ -818,6 +1200,12 @@
 
       renderHandoffBanner();
     } catch (error) {
+      if (sessionId !== state.sessionId || sessionVersion !== state.sessionVersion) {
+        return;
+      }
+
+      hideTyping();
+
       console.error("[Atendilo Widget] Send error:", error);
 
       state.messages.push({
@@ -830,37 +1218,58 @@
 
       renderMessages();
     } finally {
-      setSending(false);
-      messageInput.focus();
+      if (sessionId === state.sessionId && sessionVersion === state.sessionVersion) {
+        hideTyping();
+        setSending(false);
+        messageInput.focus();
+      }
     }
   }
 
   async function endChat() {
+    const oldSessionId = state.sessionId;
+
+    stopPolling();
+
+    state.sessionVersion += 1;
+    state.messages = [];
+    state.conversationId = null;
+    state.conversationStatus = null;
+    state.visitor = null;
+    state.sessionId = createSessionId();
+    state.isSending = false;
+
+    nameInput.value = "";
+    phoneInput.value = "";
+    emailInput.value = "";
+    messageInput.value = "";
+    setLeadError("");
+    hideTyping();
+    setSending(false);
+
+    chattingAs.innerHTML = "";
+    chattingAs.classList.add("atendilo-hidden");
+
+    renderHandoffBanner();
+    updateUIByLeadMode();
+    renderMessages();
+
     try {
       await fetchJson(endpoints.end, {
         method: "POST",
         body: JSON.stringify({
           businessId: BUSINESS_ID,
-          sessionId: state.sessionId,
-          reason: "customer",
+          sessionId: oldSessionId,
+          reason: "user",
         }),
       });
     } catch (error) {
       console.error("[Atendilo Widget] End chat error:", error);
     }
 
-    state.messages = [];
-    state.conversationId = null;
-    state.conversationStatus = null;
-    state.visitor = null;
-    state.sessionId = crypto.randomUUID
-      ? crypto.randomUUID()
-      : `session_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-
-    renderHandoffBanner();
-    updateUIByLeadMode();
-    renderMessages();
-    hidePanel();
+    if (state.isOpen) {
+      startPolling();
+    }
   }
 
   function startPolling() {
@@ -898,16 +1307,36 @@
     const phone = phoneInput.value.trim();
     const email = emailInput.value.trim();
 
-    if (!name || !phone) {
-      if (!name) nameInput.focus();
-      else phoneInput.focus();
+    setLeadError("");
+
+    if (!name) {
+      setLeadError("Please enter your name.");
+      nameInput.focus();
+      return;
+    }
+
+    if (!phone) {
+      setLeadError("Please enter your phone number.");
+      phoneInput.focus();
+      return;
+    }
+
+    if (!email) {
+      setLeadError("Please enter your email.");
+      emailInput.focus();
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setLeadError("Please enter a valid email address.");
+      emailInput.focus();
       return;
     }
 
     state.visitor = {
       name,
       phone,
-      email: email || null,
+      email,
     };
 
     updateUIByLeadMode();
